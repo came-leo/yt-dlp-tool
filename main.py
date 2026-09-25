@@ -22,7 +22,7 @@ def creer_commande(url, option_playlist):
 	commande = [
 		"yt-dlp",
 		option_playlist,
-		"-o", os.path.join(dossier_telechargements, "%(title)s.%(ext)s"),
+		"-o", os.path.join(dossier_telechargements, "%(title)s_%(height)sp.%(ext)s"),
 		url
 	]
 
@@ -50,12 +50,12 @@ def telecharger_video(url, option_playlist):
 	executer_commande(commande)
 
 
-def telecharger_1080p(url, option_playlist):
+def telecharger_qualite(url, option_playlist, qualite):
 	commande = creer_commande(url, option_playlist)
 
 	commande.extend([
 			"-f",
-			"bv*[height<=1080]+ba/b[height<=1080]"
+			f"bv*[height<={qualite}]+ba/b[height<={qualite}]"
 		])
 
 	executer_commande(commande)
@@ -97,10 +97,9 @@ groupe_format.add_argument(
 )
 
 groupe_format.add_argument(
-	"--1080p",
-	action="store_true",
-	dest="quality_1080p",
-	help="Télécharger la vidéo jusqu'en 1080p"
+	"--quality",
+	type=int,
+	help="Qualité de la vidéo à télécharger"
 )
 
 args = parser.parse_args()
@@ -113,7 +112,7 @@ else:
 
 if args.mp3:
 	telecharger_audio(args.url, option_playlist)
-elif args.quality_1080p:
-	telecharger_1080p(args.url, option_playlist)
+elif args.quality is not None:
+	telecharger_qualite(args.url, option_playlist, args.quality)
 else:
 	telecharger_video(args.url, option_playlist)
