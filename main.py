@@ -18,11 +18,11 @@ dossier_telechargements = os.path.join(
 os.makedirs(dossier_telechargements, exist_ok=True)
 
 
-def creer_commande(url, option_playlist):
+def creer_commande(url, option_playlist, dossier_sortie):
 	commande = [
 		"yt-dlp",
 		option_playlist,
-		"-o", os.path.join(dossier_telechargements, "%(title)s_%(height)sp.%(ext)s"),
+		"-o", os.path.join(dossier_sortie, "%(title)s_%(height)sp.%(ext)s"),
 		url
 	]
 
@@ -44,14 +44,14 @@ def executer_commande(commande):
 		)
 
 
-def telecharger_video(url, option_playlist):
-	commande = creer_commande(url, option_playlist)
+def telecharger_video(url, option_playlist, dossier_sortie):
+	commande = creer_commande(url, option_playlist, dossier_sortie)
 
 	executer_commande(commande)
 
 
-def telecharger_qualite(url, option_playlist, qualite):
-	commande = creer_commande(url, option_playlist)
+def telecharger_qualite(url, option_playlist, qualite, dossier_sortie):
+	commande = creer_commande(url, option_playlist, dossier_sortie)
 
 	commande.extend([
 			"-f",
@@ -61,8 +61,8 @@ def telecharger_qualite(url, option_playlist, qualite):
 	executer_commande(commande)
 
 
-def telecharger_audio(url, option_playlist):
-	commande = creer_commande(url, option_playlist)
+def telecharger_audio(url, option_playlist, dossier_sortie):
+	commande = creer_commande(url, option_playlist, dossier_sortie)
 
 	commande.extend([
 			"-x",
@@ -102,7 +102,16 @@ groupe_format.add_argument(
 	help="Qualité de la vidéo à télécharger"
 )
 
+parser.add_argument(
+	"--output",
+	default=dossier_telechargements,
+	help="Dossier de téléchargement"
+)
+
+
 args = parser.parse_args()
+
+dossier_sortie = args.output
 
 if args.playlist:
 	option_playlist = "--yes-playlist"
@@ -111,8 +120,21 @@ else:
 
 
 if args.mp3:
-	telecharger_audio(args.url, option_playlist)
+	telecharger_audio(
+		args.url,
+		option_playlist,
+		dossier_sortie
+	)
 elif args.quality is not None:
-	telecharger_qualite(args.url, option_playlist, args.quality)
+	telecharger_qualite(
+		args.url,
+		option_playlist,
+		args.quality,
+		dossier_sortie
+	)
 else:
-	telecharger_video(args.url, option_playlist)
+	telecharger_video(
+		args.url,
+		option_playlist,
+		dossier_sortie
+  )
