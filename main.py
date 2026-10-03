@@ -1,186 +1,142 @@
-import os
-import argparse
-import subprocess
+import sys
 
+from config import DOSSIER_TELECHARGEMENTS
 
-dossier_projet = os.path.dirname(__file__)
-
-cookies_path = os.path.join(
-	dossier_projet,
-	"cookies.txt"
+from interface import (
+	afficher_entete,
+	demander_url,
+	demander_dossier,
+	choisir_format,
+	choisir_qualite,
+	choisir_type_playlist,
+	demander_selection_playlist
 )
 
-dossier_telechargements = os.path.join(
-	dossier_projet,
-	"downloads"
-)
-os.makedirs(dossier_telechargements, exist_ok=True)
+from playlist import contient_playlist
 
-MODELE_VIDEO = "%(title)s_%(height)sp.%(ext)s"
-MODELE_AUDIO = "%(title)s.%(ext)s"
+from download import creer_commande, executer_commande
 
 
-def creer_commande(url, option_playlist, dossier_sortie, model_sortie):
-	# Construit la commande yt-dlp sans l'exécuter
-	
-	commande = [
-		"yt-dlp",
-		option_playlist,
-		"-o", os.path.join(dossier_sortie, model_sortie),
-		url
-	]
+def mode_interactif():
+	# Lance le mode interactif
 
-	if os.path.exists(cookies_path):
-		commande.extend(["--cookies", cookies_path])
+	dossier_sortie = DOSSIER_TELECHARGEMENTS
 
-	return commande
+	while True:
+		afficher_entete()
+
+		url, changement_dossier = demander_url(dossier_sortie)
+
+		if changement_dossier:
+			dossier_sortie = demander_dossier()
+			continue
+
+		return url, dossier_sortie
 
 
-def executer_commande(commande):
-	# Exécute une commande yt-dlp et affiche son résultat
+def mode_partage():
+	# Lance le mode utilisé depuis une autre application
 
-	print("▶ Téléchargement en cours...")
+	print(f"URL reçue : {url}")
 
-	resultat = subprocess.run(
-		commande,
-		stderr=subprocess.PIPE,
-		text=True
-	)
 
-	if resultat.returncode == 0:
-		print("✓ Téléchargement terminé")
+def preparer_telechargement(url, dossier_sortie):
+	# Prépare les choix nécessaires au téléchargement
+
+	playlist = contient_playlist(url)
+
+	format_choisi = choisir_format(playlist)
+
+	if format_choisi == "qualite":
+		qualite = choisir_qualite()
 	else:
-		print(
-			f"✗ Le téléchargement a échoué "
-			f"(code {resultat.returncode})"
-		)
+		qualite = None
 
-		if resultat.stderr:
-			print(resultat.stderr.strip())
+	if playlist:
+		type_playlist = choisir_type_playlist()
+	else:
+		type_playlist = "unique"
 
+	if type_playlist == "custom":
+		selection = demander_selection_playlist()
+	else:
+		selection = None
 
-def telecharger_video(url, option_playlist, dossier_sortie):
-	commande = creer_commande(
-		url,
-		option_playlist,
-		dossier_sortie,
-		MODELE_VIDEO
-	)
-
-	executer_commande(commande)
-
-
-def telecharger_qualite(url, option_playlist, qualite, dossier_sortie):
-	commande = creer_commande(
-		url,
-		option_playlist,
-		dossier_sortie,
-		MODELE_VIDEO
-	)
-
-	commande.extend([
-			"-f",
-			f"bv*[height<={qualite}]+ba/b[height<={qualite}]"
-		])
-
-	executer_commande(commande)
+	return {
+		"url": url,
+		"dossier_sortie": dossier_sortie,
+		"format": format_choisi,
+		"qualite": qualite,
+		"playlist": type_playlist,
+		"selection": selection
+	}
 
 
-def telecharger_audio(url, option_playlist, dossier_sortie):
-	commande = creer_commande(
-		url,
-		option_playlist,
-		dossier_sortie,
-		MODELE_AUDIO
-	)
+def creer_options(choix):
+	# Transforme les choix utilisateur en options yt-dlp
 
-	commande.extend([
+	options = []
+
+	if choix["format"] == "mp3":
+		options.extend([
 			"-x",
-			"--audio-format", "mp3",
-			"--audio-quality", "0"
+			"--audio-format",
+			"mp3"
 		])
 
-	executer_commande(commande)
+	elif choix["format"] == "qualite":
+		options.extend([
+			"-f",
+			f"bestvideo[height<={choix['qualite']}]+"
+			f"bestaudio/best[height<={choix['qualite']}]"
+		])
 
 
-def valider_qualite(valeur):
-	# Vérifie que la qualité demandée est autorisée
-  
-	qualites = [360, 480, 720, 1080]
+	if choix["playlist"] == "complete":
+		options.append("--yes-playlist")
 
-	valeur = int(valeur)
+	elif choix["playlist"] == "custom":
+		options.extend([
+			"--yes-playlist",
+			"--playlist-items",
+			choix["selection"]
+		])
 
-	if valeur not in qualites:
-		raise argparse.ArgumentTypeError(
-			"La qualité doit être 360, 480, 720, ou 1080"
+	else:
+		options.append("--no-playlist")
+
+	return options
+
+
+def main():
+	# Récupère les arguments fournis au lancement
+
+	if len(sys.argv) > 1:
+		mode_partage(sys.argv[1])
+	else:
+		url, dossier_sortie = mode_interactif()
+
+		choix = preparer_telechargement(url, dossier_sortie)
+
+		options = creer_options(choix)
+
+		if choix["format"] == "mp3":
+			modele_sortie = "%(title)s.%(ext)s"
+		else:
+			modele_sortie = "%(title)s_%(height)sp.%(ext)s"
+
+		commande = creer_commande(
+			choix["url"],
+			options,
+			choix["dossier_sortie"],
+			modele_sortie
 		)
 
-	return valeur
+		executer_commande(commande)
+
+		print(options)
 
 
-parser = argparse.ArgumentParser(
-	description="Télécharger une vidéo ou un MP3 avec yt-dlp."
-)
 
-parser.add_argument(
-	"url",
-	help="URL de la vidéo à télécharger"
-)
-
-parser.add_argument(
-	"--playlist",
-	action="store_true",
-	help="Télécharger la playlist entière"
-)
-
-groupe_format = parser.add_mutually_exclusive_group()
-
-groupe_format.add_argument(
-	"--mp3",
-	action="store_true",
-	help="Télécharger uniquement l'audio en MP3"
-)
-
-groupe_format.add_argument(
-	"--quality",
-	type=valider_qualite,
-	help="Qualité de la vidéo : 360, 480, 720 ou 1080"
-)
-
-parser.add_argument(
-	"--output",
-	default=dossier_telechargements,
-	help="Dossier de téléchargement"
-)
-
-
-args = parser.parse_args()
-
-dossier_sortie = args.output
-os.makedirs(dossier_sortie, exist_ok=True)
-
-if args.playlist:
-	option_playlist = "--yes-playlist"
-else:
-	option_playlist = "--no-playlist"
-
-
-if args.mp3:
-	telecharger_audio(
-		args.url,
-		option_playlist,
-		dossier_sortie
-	)
-elif args.quality is not None:
-	telecharger_qualite(
-		args.url,
-		option_playlist,
-		args.quality,
-		dossier_sortie
-	)
-else:
-	telecharger_video(
-		args.url,
-		option_playlist,
-		dossier_sortie
-	)
+if __name__ == "__main__":
+	main()
