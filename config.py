@@ -7,12 +7,12 @@ COOKIES_PATH = os.path.join(
 	"cookies.txt"
 )
 
-DOSSIER_TELECHARGEMENTS = os.path.join(
+DOSSIER_TELECHARGEMENT = os.path.join(
 	DOSSIER_PROJET,
 	"download"
 )
 
 os.makedirs(
-	DOSSIER_TELECHARGEMENTS,
+	DOSSIER_TELECHARGEMENT,
 	exist_ok=True
 )
