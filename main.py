@@ -1,6 +1,6 @@
 import sys
 
-from config import DOSSIER_TELECHARGEMENTS
+from config import DOSSIER_TELECHARGEMENT
 
 from interface import (
 	afficher_entete,
@@ -14,13 +14,13 @@ from interface import (
 
 from playlist import contient_playlist
 
-from download import creer_commande, executer_commande
+from download import telecharger
 
 
 def mode_interactif():
 	# Lance le mode interactif
 
-	dossier_sortie = DOSSIER_TELECHARGEMENTS
+	dossier_sortie = DOSSIER_TELECHARGEMENT
 
 	while True:
 		afficher_entete()
@@ -34,10 +34,16 @@ def mode_interactif():
 		return url, dossier_sortie
 
 
-def mode_partage():
+def mode_partage(url):
 	# Lance le mode utilisé depuis une autre application
 
-	print(f"URL reçue : {url}")
+	dossier_sortie = DOSSIER_TELECHARGEMENT
+
+	lancer_telechargement(
+		url,
+		dossier_sortie,
+		"partage"
+	)
 
 
 def preparer_telechargement(url, dossier_sortie):
@@ -72,40 +78,24 @@ def preparer_telechargement(url, dossier_sortie):
 	}
 
 
-def creer_options(choix):
-	# Transforme les choix utilisateur en options yt-dlp
+def lancer_telechargement(url, dossier_sortie, mode="interactif"):
+	# Prépare et lance le téléchargement
 
-	options = []
+	choix = preparer_telechargement(url, dossier_sortie)
 
-	if choix["format"] == "mp3":
-		options.extend([
-			"-x",
-			"--audio-format",
-			"mp3"
-		])
+	telecharger(choix)
 
-	elif choix["format"] == "qualite":
-		options.extend([
-			"-f",
-			f"bestvideo[height<={choix['qualite']}]+"
-			f"bestaudio/best[height<={choix['qualite']}]"
-		])
+	if mode == "partage":
+		print()
+		input("Entrer pour quitter : ")
+		return False
 
+	print()
+	choix = input(
+		"Entrer pour quitter, (R) pour retourner au menu principal : "
+	)
 
-	if choix["playlist"] == "complete":
-		options.append("--yes-playlist")
-
-	elif choix["playlist"] == "custom":
-		options.extend([
-			"--yes-playlist",
-			"--playlist-items",
-			choix["selection"]
-		])
-
-	else:
-		options.append("--no-playlist")
-
-	return options
+	return choix.lower() == "r"
 
 
 def main():
@@ -114,28 +104,16 @@ def main():
 	if len(sys.argv) > 1:
 		mode_partage(sys.argv[1])
 	else:
-		url, dossier_sortie = mode_interactif()
+		while True:
+			url, dossier_sortie = mode_interactif()
 
-		choix = preparer_telechargement(url, dossier_sortie)
+			retour_menu = lancer_telechargement(
+				url,
+				dossier_sortie
+			)
 
-		options = creer_options(choix)
-
-		if choix["format"] == "mp3":
-			modele_sortie = "%(title)s.%(ext)s"
-		else:
-			modele_sortie = "%(title)s_%(height)sp.%(ext)s"
-
-		commande = creer_commande(
-			choix["url"],
-			options,
-			choix["dossier_sortie"],
-			modele_sortie
-		)
-
-		executer_commande(commande)
-
-		print(options)
-
+			if not retour_menu:
+				break
 
 
 if __name__ == "__main__":
