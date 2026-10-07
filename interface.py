@@ -1,70 +1,97 @@
 import os
-from validation import (
-	valider_qualite,
-	valider_selection_playlist,
-	valider_url
-)
 
 
-def afficher_entete():
-	# Affiche l'entete principale de l'application
+RETOUR = "retour"
+MENU = "menu"
+QUITTER = "quitter"
 
-	# Nettoie le terminal au lancement (linux)
+
+def lire_choix(message):
+	# Lit une saisie et reconnaît les commandes de navigation
+
+	choix = input(message).strip().lower()
+
+	if choix == "r":
+		return RETOUR
+
+	if choix == "m":
+		return MENU
+
+	if choix == "q":
+		return QUITTER
+
+	return choix
+
+
+def menu_principal(dossier_sortie):
+	# Affiche le menu principal
+
 	os.system("clear")
 
-	print("YT-DLP-TOOL")
+	print("=== YT-DLP-TOOL ===")
 	print()
-	print("Télécharger une vidéo, un mp3 ou une playlist avec yt-dlp")
-
-
-def demander_url(dossier_sortie):
-	# Demande l'url ou permet de changer le dossier
-
-	print(f'Destination "{dossier_sortie}", taper (C) pour changer de dossier')
+	print("Télécharger avec yt-dlp")
+	print()
+	print(f"Destination : {dossier_sortie}")
+	print()
+	print("[c] Changer de dossier    [q] Quitter")
 	print()
 
 	while True:
-		url = input("URL : ")
+		choix = lire_choix("URL : ")
 
-		if url.lower() == "c":
-			return	None, True
+		if choix == QUITTER:
+			return QUITTER
 
-		try:
-			url = valider_url(url)
-			return url, False
-		except ValueError as erreur:
-				print(erreur)
+		if choix == "c":
+			return "changer_dossier"
 
-	
+		if choix:
+			return choix
+
+		print("Veuillez entrer une URL.")
 
 
 def demander_dossier():
-	# Demande à l'utilisateur le nouveau dossier de téléchargement
-
-	dossier = input("Destination : ")
-
-	os.makedirs(dossier, exist_ok=True)
-
-	return dossier
-
-
-def choisir_format(contient_playlist):
-	# Affiche le menu permettant de choisir le format
+	# Demande le nouveau dossier de téléchargement
 
 	print()
-	if contient_playlist:
-		print("L'URL est une vidéo et une playlist")
-	else:
-		print("L'URL est une vidéo")
-
-	print()
-	print("1. mp3")
-	print("2. vidéo")
-	print("3. qualité spécifique")
+	print("CHANGER DE DOSSIER")
 	print()
 
 	while True:
-		choix = input("Choix : ")
+		dossier = input("Destination : ").strip()
+
+		if dossier:
+			os.makedirs(dossier, exist_ok=True)
+			return dossier
+
+		print("Veuillez entrer un dossier.")
+
+
+def menu_format(contient_playlist):
+	# Affiche le menu de choix du format
+
+	os.system("clear")
+
+	print("[r] Retour    [m] Menu    [q] Quitter")
+	print()
+	print("1  MP3")
+	print("2  Vidéo")
+	print("3  Qualité spécifique")
+	print()
+
+	while True:
+		choix = lire_choix("Choix : ")
+
+		if choix == RETOUR:
+			return RETOUR
+
+		if choix == MENU:
+			return MENU
+
+		if choix == QUITTER:
+			return QUITTER
 
 		if choix == "1":
 			return "mp3"
@@ -75,48 +102,66 @@ def choisir_format(contient_playlist):
 		if choix == "3":
 			return "qualite"
 
-		print("Choix invalide. Veuillez choisir 1, 2 ou 3.")
+		print("Choix invalide.")
 
 
-def choisir_qualite():
-	# Affiche les qualités disponibles
+def menu_qualite():
+	# Affiche le menu de choix de la qualité vidéo
 
 	print()
-	print("1. 480p")
-	print("2. 720p")
-	print("3. 1080p")
-	print("4. 1440p (2k)")
-	print("5. 2160p (4k)")
+	print("1  480p")
+	print("2  720p")
+	print("3  1080p")
+	print("4  1440p (2K)")
+	print("5  2160p (4K)")
 	print()
+
+	qualites = {
+		"1": 480,
+		"2": 720,
+		"3": 1080,
+		"4": 1440,
+		"5": 2160
+	}
 
 	while True:
-		choix = input("Choix : ")
+		choix = lire_choix("Choix : ")
 
-		qualites = {
-			"1": 480,
-			"2": 720,
-			"3": 1080,
-			"4": 1440,
-			"5": 2160,
-		}
+		if choix == RETOUR:
+			return RETOUR
+
+		if choix == MENU:
+			return MENU
+
+		if choix == QUITTER:
+			return QUITTER
 
 		if choix in qualites:
-			return valider_qualite(qualites[choix])
+			return qualites[choix]
 
-		print("Choix invalide. Veuillez choisir de 1 à 5.")
+		print("Choix invalide.")
 
 
-def choisir_type_playlist():
-	# Demande comment traiter la playlist
+def menu_playlist():
+	# Affiche le menu de traitement de la playlist
 
 	print()
-	print("1. vidéo/audio unique")
-	print("2. toute la playlist")
-	print("3. playlist personnalisée")
+	print("1  Vidéo/audio unique")
+	print("2  Toute la playlist")
+	print("3  Sélection personnalisée")
 	print()
 
 	while True:
-		choix = input("Choix : ")
+		choix = lire_choix("Choix : ")
+
+		if choix == RETOUR:
+			return RETOUR
+
+		if choix == MENU:
+			return MENU
+
+		if choix == QUITTER:
+			return QUITTER
 
 		if choix == "1":
 			return "unique"
@@ -127,10 +172,10 @@ def choisir_type_playlist():
 		if choix == "3":
 			return "custom"
 
-		print("Choix invalide. Veuillez choisir 1, 2 ou 3.")
+		print("Choix invalide.")
 
 
-def demander_selection_playlist():
+def menu_selection():
 	# Demande les éléments de la playlist à télécharger
 
 	print()
@@ -138,9 +183,18 @@ def demander_selection_playlist():
 	print()
 
 	while True:
-		choix = input("Choix : ")
+		choix = lire_choix("Sélection : ")
 
-		try:
-			return valider_selection_playlist(choix)
-		except ValueError as erreur:
-			print(erreur)
+		if choix == RETOUR:
+			return RETOUR
+
+		if choix == MENU:
+			return MENU
+
+		if choix == QUITTER:
+			return QUITTER
+
+		if choix:
+			return choix
+
+		print("Veuillez entrer une sélection.")
