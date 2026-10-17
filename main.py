@@ -88,6 +88,15 @@ def enregistrer_dossier(dossier):
 
 	return dossier
 
+def mettre_a_jour():
+	print("\n == MISE A JOUR DE YT-DLP ==\n")
+
+	try:
+		subprocess.run(["yt-dlp", "-U"], check=False)
+	except OSError as erreur:
+		print("Erreur : ", erreur)
+
+	input("\nAppuyez sur Entrée pour continuer...")
 
 def demander_url(dossier, url_partagee=None):
 	# Demande l'URL ou permet de changer de dossier
@@ -102,6 +111,7 @@ def demander_url(dossier, url_partagee=None):
 		print(f"Téléchargement : {dossier}")
 		print()
 		print("c. Changer de destination")
+		print("u. Mise à jour yt-dlp")
 		print("q. Quitter le programme")
 		print()
 
@@ -113,6 +123,10 @@ def demander_url(dossier, url_partagee=None):
 
 		if url.lower() == "q":
 			return None, dossier
+
+		if url.lower() == "u":
+			mettre_a_jour()
+			continue
 
 		if url.lower() == "c":
 			nouveau_dossier = input(
@@ -233,6 +247,49 @@ def demander_playlist():
 		print("Choix invalide.")
 
 
+def creer_commande(url, format_choisi, qualite, playlist, selection, dossier):
+	# Options de base
+	commande = [
+		"yt-dlp",
+		"--js-runtimes", "node"
+	]
+
+	# Gestion des cookies
+
+	# Choix du format
+	if format_choisi == "mp3":
+		commande.extend(["-x", "--audio-format", "mp3"])
+		modele = "%(title).80s.%(ext)s"
+	else:
+		limite = qualite if format_choisi == "qualite" else 720
+
+		format_video = (
+			f"bestvideo[height<=?{limite}]+bestaudio/"
+			f"best[height<=?{limite}]/best"
+		)
+
+		commande.extend([
+			"-f", format_video,
+			"--merge-output-format", "mp4",
+		])
+
+		modele = "%(title).80s_%(height)sp.%(ext)s"
+
+	# Gestion de la playlist
+	if playlist == "unique":
+		commande.append("--no-playlist")
+	elif playlist == "complete":
+		commande.append("--yes-playlist")
+	elif playlist == "custom":
+		commande.extend(["--yes-playlist", "--playlist-items", selection])
+
+	# Dossier et nom des fichiers
+	commande.extend([
+		"-o", os.path.join(dossier, modele),
+		url,
+	])
+
+	return commande
 
 if __name__ == "__main__":
 	try:
