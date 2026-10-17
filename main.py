@@ -236,7 +236,6 @@ def creer_commande(url, format_choisi, qualite, playlist, selection, dossier):
 	# Options de base
 	commande = [
 		"yt-dlp",
-		"--ignore-config",
 		"--js-runtimes", "node"
 	]
 
