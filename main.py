@@ -87,6 +87,15 @@ def enregistrer_dossier(dossier):
 
 	return dossier
 
+def mettre_a_jour():
+	print("\n == MISE A JOUR DE YT-DLP ==\n")
+
+	try:
+		subprocess.run(["yt-dlp", "-U"], check=False)
+	except OSError as erreur:
+		print("Erreur : ", erreur)
+
+	input("\nAppuyez sur Entrée pour continuer...")
 
 def demander_url(dossier, url_partagee=None):
 	# Demande l'URL ou permet de changer de dossier
@@ -101,6 +110,7 @@ def demander_url(dossier, url_partagee=None):
 		print(f"Téléchargement : {dossier}")
 		print()
 		print("c. Changer de destination")
+		print("u. Mise à jour yt-dlp")
 		print("q. Quitter le programme")
 		print()
 
@@ -112,6 +122,10 @@ def demander_url(dossier, url_partagee=None):
 
 		if url.lower() == "q":
 			return None, dossier
+
+		if url.lower() == "u":
+			mettre_a_jour()
+			continue
 
 		if url.lower() == "c":
 			nouveau_dossier = input(
