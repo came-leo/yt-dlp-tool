@@ -99,8 +99,10 @@ def demander_url(dossier, url_partagee=None):
 
 		print("YT-DLP-TOOL")
 		print()
-		print(f"Destination : {dossier}")
-		print("C. Dossier   Q. Quitter")
+		print(f"Téléchargement : {dossier}")
+		print()
+		print("c. Changer de destination")
+		print("q. Quitter le programme")
 		print()
 
 		if url_partagee is not None:

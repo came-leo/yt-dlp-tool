@@ -13,7 +13,9 @@ def creer_commande(
 	commande = [
 		"yt-dlp",
 		"--ignore-config",
-		"--js-runtimes", "node"
+		"--js-runtimes", "node",
+		"--newline",
+		"--progress"
 	]
 
 	# Choix du format

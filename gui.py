@@ -19,7 +19,18 @@ class YtDlpToolApp:
 		self.url = tk.StringVar()
 		self.format_choisi = tk.StringVar(value="video")
 		self.qualite = tk.StringVar(value="720p")
+		self.playlist = tk.StringVar(value="unique")
+		self.selection_playlist = tk.StringVar()
 		self.statut = tk.StringVar(value="Prêt")
+		self.progression = tk.DoubleVar(value=0)
+		self.details_progression = tk.StringVar(
+			value="En attente d'un téléchargement"
+		)
+		self.processus = None
+		self.arret_demande = False
+		self.taille_telechargee = tk.StringVar(value="Téléchargé : -")
+		self.vitesse = tk.StringVar(value="Vitesse : -")
+		self.temps_restant = tk.StringVar(value="Temps restant : -")
 
 		self.creer_interface()
 
@@ -123,6 +134,46 @@ class YtDlpToolApp:
 			pady=(6, 18)
 		)
 
+		# Gestion de la playlist
+		ttk.Label(
+			principal,
+			text="contenu à télécharger"
+		).pack(anchor="w")
+
+		cadre_playlist = ttk.Frame(principal)
+		cadre_playlist.pack(fill="x", pady=(6, 10))
+
+		ttk.Radiobutton(
+			cadre_playlist,
+			text="Un seul élément",
+			variable=self.playlist,
+			value="unique",
+			command=self.actualiser_playlist
+		).pack(anchor="w")
+
+		ttk.Radiobutton(
+			cadre_playlist,
+			text="Toute la playlist",
+			variable=self.playlist,
+			value="complete",
+			command=self.actualiser_playlist
+		).pack(anchor="w")
+
+		ttk.Radiobutton(
+			cadre_playlist,
+			text="Sélection personnalisée",
+			variable=self.playlist,
+			value="custom",
+			command=self.actualiser_playlist
+		).pack(anchor="w")
+
+		self.champ_selection = ttk.Entry(
+			principal,
+			textvariable=self.selection_playlist,
+			state="disabled"
+		)
+		self.champ_selection.pack(fill="x", pady=(0, 18))
+
 		# Dossier de destination
 		ttk.Label(
 			principal,
@@ -158,6 +209,15 @@ class YtDlpToolApp:
 		)
 		self.bouton_telecharger.pack(fill="x")
 
+		self.bouton_arreter = ttk.Button(
+			principal,
+			text="Arrêter",
+			command=self.arreter_telechargement,
+			state="disabled"
+		)
+		self.bouton_arreter.pack(fill="x", pady=(8, 0))
+
+
 		# Statut
 		ttk.Separator(
 			principal,
@@ -168,6 +228,41 @@ class YtDlpToolApp:
 			principal,
 			textvariable=self.statut
 		).pack(anchor="w")
+
+		# Barre de progression
+		ttk.Progressbar(
+			principal,
+			variable=self.progression,
+			maximum=100,
+			mode="determinate",
+		).pack(fill="x", pady=(12, 6))
+
+		# Pourcentage et détails
+
+		self.infos_progression = ttk.Label(
+			principal,
+			textvariable=self.details_progression
+		)
+		self.infos_progression.pack(anchor="w")
+
+		# Taille, vitesse et temps restant
+		ligne_infos = ttk.Frame(principal)
+		ligne_infos.pack(fill="x", pady=(8, 0))
+
+		ttk.Label(
+			ligne_infos,
+			textvariable=self.taille_telechargee
+		).pack(side="left", expand=True, anchor="w")
+
+		ttk.Label(
+			ligne_infos,
+			textvariable=self.vitesse
+		).pack(side="left", expand=True, anchor="w")
+
+		ttk.Label(
+			ligne_infos,
+			textvariable=self.temps_restant
+		).pack(side="left", expand=True, anchor="w")
 
 		self.actualiser_qualite()
 
@@ -190,6 +285,56 @@ class YtDlpToolApp:
 			self.list_qualite.configure(state="disabled")
 		else:
 			self.list_qualite.configure(state="readonly")
+
+	def actualiser_playlist(self):
+		if self.playlist.get() == "custom":
+			self.champ_selection.configure(state="normal")
+		else:
+			self.champ_selection.configure(state="disabled")
+			self.selection_playlist.set("")
+
+	def arreter_telechargement(self):
+		processus = self.processus
+
+		print("PID suivi :", processus.pid if processus else None)
+		print(
+			"Code de sortie :",
+			processus.poll() if processus else None
+		)
+
+		if processus is not None and processus.poll() is None:
+			self.arret_demande = True
+			processus.terminate()
+			self.bouton_arreter.configure(state="disabled")
+			self.statut.set("Arrêt du téléchargement...")
+
+			try:
+				resultat = subprocess.run(
+					[
+						"taskkill",
+						"/F",
+						"/T",
+						"/PID",
+						str(processus.pid)
+					],
+					capture_output=True,
+					text=True,
+					encoding="utf-8",
+					errors="replace",
+					check=False
+				)
+
+				print("Code taskkill : ", resultat.returncode)
+				print("Sortie : ", resultat.stdout)
+				print("Erreur : ", resultat.stderr)
+
+			except OSError as erreur:
+				self.arret_demande = False
+				self.bouton_arreter.configure(state="normal")
+				self.statut.set(f"Impossible d'arrêter : {erreur}")
+
+		else:
+			self.statut.set("Aucun téléchargement en cours")
 
 	def telecharger(self):
 		url = self.url.get().strip()
@@ -214,16 +359,31 @@ class YtDlpToolApp:
 			)
 			format_choisi = "qualite"
 
+		playlist = self.playlist.get()
+		selection = None
+
+		if playlist == "custom":
+			selection = self.selection_playlist.get().strip()
+
+			if not selection:
+				self.statut.set(
+					"Indique les éléments à télécharger."
+				)
+				self.champ_selection.focus_set()
+				return
+
 		commande = creer_commande(
 			url,
 			format_choisi,
 			qualite,
-			"unique",
-			None,
+			playlist,
+			selection,
 			dossier
-		)
+		)	
 
+		self.arret_demande = False
 		self.bouton_telecharger.configure(state="disabled")
+		self.bouton_arreter.configure(state="normal")
 		self.statut.set("Téléchargement en cours...")
 
 		thread = threading.Thread(
@@ -234,18 +394,49 @@ class YtDlpToolApp:
 		thread.start()
 
 	def executer_telechargement(self, commande):
-		try:
-			resultat = subprocess.run(
-				commande,
-				check=False
-			)
+		import re
 
-			if resultat.returncode == 0:
+		try:
+			self.processus = subprocess.Popen(
+				commande,
+				stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT,
+				text=True,
+				encoding="utf-8",
+				errors="replace",
+				bufsize=1
+			)
+			print("Commande exécutée :", commande)
+			print("PID créé :", self.processus.pid)
+
+			for ligne in self.processus.stdout:
+				correspondance = re.search(
+					r"\[download\]\s+(\d+(?:\.\d+)?)%",
+					ligne
+				)
+
+				if correspondance:
+					pourcentage = float(
+						correspondance.group(1)
+					)
+
+					self.root.after(
+						0,
+						self.actualiser_progression,
+						pourcentage,
+						ligne.strip()
+					)
+
+			code_retour = self.processus.wait()
+
+			if self.arret_demande:
+				message = "Téléchargement arrêté."
+			elif code_retour == 0:
 				message = "Téléchargement terminé."
 			else:
 				message = (
 					f"Echec du téléchargement "
-					f"(code {resultat.returncode})"
+					f"(code {code_retour})"
 				)
 
 		except FileNotFoundError:
@@ -263,9 +454,55 @@ class YtDlpToolApp:
 			message
 		)
 
+	def actualiser_progression(self, pourcentage, details):
+		import re
+
+		self.progression.set(pourcentage)
+		self.details_progression.set(
+			f"Progression : {pourcentage:.0f} %"
+		)
+
+		taille = re.search(
+			r"of\s+~?\s*([\d.]+\s*[KMGTP]?i?B)",
+			details
+		)
+
+		vitesse = re.search(
+			r"at\s+([\d.]+\s*[KMGTP]?i?B/s)",
+			details
+		)
+
+		temps = re.search(
+			r"ETA\s+(\d+:\d+(?::\d+)?)",
+			details
+		)
+
+		self.taille_telechargee.set(
+			f"Téléchargé : {taille.group(1)}"
+			if taille else "Téléchargé : -"
+		)
+
+		if vitesse:
+			self.vitesse.set(
+				f"Vitesse : {vitesse.group(1)}"
+			)
+		else:
+			self.vitesse.set("Vitesse : -")
+
+		if temps:			
+			self.temps_restant.set(
+				f"Temps restant : {temps.group(1)}"
+			)
+		else:
+			self.temps_restant.set("Temps restant : -")
+
+
 	def terminer_telechargement(self, message):
+		self.progression.set(100 if message == "Téléchargement terminé." else 0)
 		self.statut.set(message)
 		self.bouton_telecharger.configure(state="normal")
+		self.bouton_arreter.configure(state="disabled")
+		self.processus = None
 
 def lancer_interface():
 	root = tk.Tk()
