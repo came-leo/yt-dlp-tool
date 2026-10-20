@@ -10,7 +10,7 @@ class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
 		self.root.title("yt-dlp-tool")
-		self.root.geometry("620x520")
+		self.root.geometry("620x740")
 		self.root.minsize(540, 460)
 
 		self.dossier = tk.StringVar(
@@ -40,11 +40,6 @@ class YtDlpToolApp:
 
 		if "clam" in style.theme_names():
 			style.theme_use("clam")
-
-		style.configure(
-			"Subtitle.TLabel",
-			font=("Segoe UI", 20, "bold")
-		)
 
 		style.configure(
 			"Subtitle.TLabel",
@@ -278,7 +273,7 @@ class YtDlpToolApp:
 				self.dossier.set(dossier)
 				self.statut.set("Dossier enregistré.")
 			except OSError as erreur:
-				selt.statut.set(f"Erreur : {erreur}")
+				self.statut.set(f"Erreur : {erreur}")
 
 	def actualiser_qualite(self):
 		if self.format_choisi.get() == "mp3":
@@ -296,15 +291,8 @@ class YtDlpToolApp:
 	def arreter_telechargement(self):
 		processus = self.processus
 
-		print("PID suivi :", processus.pid if processus else None)
-		print(
-			"Code de sortie :",
-			processus.poll() if processus else None
-		)
-
 		if processus is not None and processus.poll() is None:
 			self.arret_demande = True
-			processus.terminate()
 			self.bouton_arreter.configure(state="disabled")
 			self.statut.set("Arrêt du téléchargement...")
 
@@ -323,10 +311,6 @@ class YtDlpToolApp:
 					errors="replace",
 					check=False
 				)
-
-				print("Code taskkill : ", resultat.returncode)
-				print("Sortie : ", resultat.stdout)
-				print("Erreur : ", resultat.stderr)
 
 			except OSError as erreur:
 				self.arret_demande = False
@@ -406,8 +390,6 @@ class YtDlpToolApp:
 				errors="replace",
 				bufsize=1
 			)
-			print("Commande exécutée :", commande)
-			print("PID créé :", self.processus.pid)
 
 			for ligne in self.processus.stdout:
 				correspondance = re.search(
