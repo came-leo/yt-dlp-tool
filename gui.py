@@ -115,31 +115,46 @@ class YtDlpToolApp:
 			sticky="ew",
 			pady=(0, espacement_section)
 		)
-		formats.grid_columnconfigure((0, 1), weight=1, uniform="format")
-		self.bouton_video = ctk.CTkButton(
+		self.radio_video = ctk.CTkRadioButton(
 			formats,
 			text="Vidéo MP4",
-			height=48,
-			corner_radius=8,
-			font=("Segoe UI", 13, "bold"),
-			fg_color="#343434",
-			hover_color="#414141",
-			border_width=0,
-			command=lambda: self.choisir_format("video")
+			variable=self.format_choisi,
+			value="video",
+			width=145,
+			height=28,
+			radiobutton_width=18,
+			radiobutton_height=18,
+			corner_radius=10,
+			border_width_unchecked=2,
+			border_width_checked=5,
+			fg_color=accent,
+			hover_color="#A63F30",
+			border_color=bordure,
+			text_color=texte,
+			font=("Segoe UI", 13),
+			command=self.actualiser_qualite
 		)
-		self.bouton_video.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-		self.bouton_audio = ctk.CTkButton(
+		self.radio_video.pack(side="left", padx=(0, 24))
+		self.radio_audio = ctk.CTkRadioButton(
 			formats,
 			text="Audio MP3",
-			height=48,
-			corner_radius=8,
-			font=("Segoe UI", 13, "bold"),
-			fg_color="#343434",
-			hover_color="#414141",
-			border_width=0,
-			command=lambda: self.choisir_format("mp3")
+			variable=self.format_choisi,
+			value="mp3",
+			width=145,
+			height=28,
+			radiobutton_width=18,
+			radiobutton_height=18,
+			corner_radius=10,
+			border_width_unchecked=2,
+			border_width_checked=5,
+			fg_color=accent,
+			hover_color="#A63F30",
+			border_color=bordure,
+			text_color=texte,
+			font=("Segoe UI", 13),
+			command=self.actualiser_qualite
 		)
-		self.bouton_audio.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+		self.radio_audio.pack(side="left")
 
 		ligne_options = ctk.CTkFrame(contenu, fg_color="transparent")
 		ligne_options.grid(
@@ -320,27 +335,10 @@ class YtDlpToolApp:
 		self.infos_progression.grid(row=9, column=0, sticky="w", pady=(6, 0))
 
 		self.actualiser_qualite()
-		self.actualiser_format()
 		self.actualiser_playlist()
 		self.changer_playlist("Un élément")
 
 	# Gestion des préférences de téléchargement
-	def choisir_format(self, format_choisi):
-		self.format_choisi.set(format_choisi)
-		self.actualiser_format()
-		self.actualiser_qualite()
-
-	def actualiser_format(self):
-		for bouton, actif in (
-			(self.bouton_video, self.format_choisi.get() == "video"),
-			(self.bouton_audio, self.format_choisi.get() == "mp3"),
-		):
-			bouton.configure(
-				fg_color="#424242" if actif else "#343434",
-				hover_color="#4b4b4b" if actif else "#414141",
-				text_color="#f4f4f4",
-			)
-
 	def changer_playlist(self, choix):
 		valeur = {
 			"Un élément": "unique",
