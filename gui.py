@@ -1,25 +1,32 @@
-import tkinter as tk
-from tkinter import ttk, filedialog
-from main import charger_dossier, enregistrer_dossier
-from downloader import creer_commande
+import re
 import subprocess
 import threading
+import tkinter as tk
+from tkinter import filedialog
+
+import customtkinter as ctk
+
+from downloader import creer_commande
+from main import charger_dossier, enregistrer_dossier
 
 
 class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
 		self.root.title("yt-dlp-tool")
-		self.root.geometry("620x740")
-		self.root.minsize(540, 460)
+		self.root.geometry("880x720")
+		self.root.minsize(720, 620)
+		self.root.configure(fg_color="#2d2d2d")
 
-		self.dossier = tk.StringVar(
-			value=charger_dossier()
-		)
+		ctk.set_appearance_mode("dark")
+		ctk.set_default_color_theme("dark-blue")
+
+		self.dossier = tk.StringVar(value=charger_dossier())
 		self.url = tk.StringVar()
 		self.format_choisi = tk.StringVar(value="video")
 		self.qualite = tk.StringVar(value="720p")
 		self.playlist = tk.StringVar(value="unique")
+		self.option_playlist = tk.StringVar(value="Un élément")
 		self.selection_playlist = tk.StringVar()
 		self.statut = tk.StringVar(value="Prêt")
 		self.progression = tk.DoubleVar(value=0)
@@ -34,232 +41,314 @@ class YtDlpToolApp:
 
 		self.creer_interface()
 
+	# Construction de l'interface
 	def creer_interface(self):
-		# Style général
-		style = ttk.Style()
+		carte = "#2d2d2d"
+		bordure = "#4a4a4a"
+		texte = "#f4f4f4"
+		secondaire = "#b8b8b8"
+		accent = "#C0503D"
+		espacement_section = 18
+		self.accent = accent
 
-		if "clam" in style.theme_names():
-			style.theme_use("clam")
+		# La fenêtre sert directement de conteneur principal.
+		principal = self.root
+		principal.grid_columnconfigure(0, weight=1)
 
-		style.configure(
-			"Subtitle.TLabel",
-			font=("Segoe UI", 10)
-		)
-
-		style.configure(
-			"Accent.TButton",
-			font=("Segoe UI", 10, "bold"),
-			padding=10
-		)
-
-		# Conteneur principal
-		principal = ttk.Frame(self.root, padding=24)
-		principal.pack(fill="both", expand=True)
-
-		# En-tête
-		ttk.Label(
-			principal,
+		entete = ctk.CTkFrame(principal, fg_color="transparent")
+		entete.grid(row=0, column=0, sticky="ew", padx=32, pady=(28, 14))
+		entete.grid_columnconfigure(0, weight=1)
+		ctk.CTkLabel(
+			entete,
 			text="yt-dlp-tool",
-			style="Title.TLabel"
-		).pack(anchor="w")
+			text_color=texte,
+			font=("Segoe UI", 21, "bold")
+		).grid(row=0, column=0, sticky="sw")
+		ctk.CTkLabel(
+			entete,
+			text="Téléchargeur multimédia",
+			text_color=secondaire,
+			font=("Segoe UI", 12)
+		).grid(row=1, column=0, sticky="nw")
 
-		ttk.Label(
-			principal,
-			text="Téléchargeur vidéo et audio",
-			style="Subtitle.TLabel"
-		).pack(anchor="w", pady=(2, 24))
+		separateur = ctk.CTkFrame(principal, height=1, fg_color="#414141")
+		separateur.grid(row=1, column=0, sticky="ew", padx=32, pady=(0, 20))
 
-		# URL
-		ttk.Label(
-			principal,
-			text="URL de la vidéo ou de la playlist"
-		).pack(anchor="w")
+		contenu = ctk.CTkFrame(principal, fg_color="transparent")
+		contenu.grid(row=2, column=0, sticky="nsew", padx=32, pady=(0, 28))
+		contenu.grid_columnconfigure(0, weight=1)
 
-		self.champ_url = ttk.Entry(
-			principal,
-			textvariable=self.url
+		def etiquette(parent, titre, row, pady=(0, 6), column=0):
+			ctk.CTkLabel(
+				parent,
+				text=titre,
+				text_color=texte,
+				font=("Segoe UI", 13, "bold")
+			).grid(
+				row=row,
+				column=column,
+				sticky="w",
+				pady=pady
+			)
+
+		etiquette(contenu, "URL de la vidéo ou de la playlist", 0)
+		self.champ_url = ctk.CTkEntry(
+			contenu,
+			textvariable=self.url,
+			height=46,
+			corner_radius=9,
+			border_color=bordure,
+			fg_color=carte,
+			placeholder_text="https://www.youtube.com/..."
 		)
-		self.champ_url.pack(fill="x", pady=(6, 18))
+		self.champ_url.grid(
+			row=1,
+			column=0,
+			sticky="ew",
+			pady=(0, espacement_section)
+		)
 
-		# Format
-		ttk.Label(
-			principal,
-			text="Format"
-		).pack(anchor="w")
-
-		formats = ttk.Frame(principal)
-		formats.pack(fill="x", pady=(6, 18))
-
-		ttk.Radiobutton(
+		formats = ctk.CTkFrame(contenu, fg_color="transparent")
+		formats.grid(
+			row=2,
+			column=0,
+			sticky="ew",
+			pady=(0, espacement_section)
+		)
+		formats.grid_columnconfigure((0, 1), weight=1, uniform="format")
+		self.bouton_video = ctk.CTkButton(
 			formats,
 			text="Vidéo MP4",
-			variable=self.format_choisi,
-			value="video",
-			command=self.actualiser_qualite
-		).pack(side="left", padx=(0, 20))
-
-		ttk.Radiobutton(
+			height=48,
+			corner_radius=8,
+			font=("Segoe UI", 13, "bold"),
+			fg_color="#343434",
+			hover_color="#414141",
+			border_width=0,
+			command=lambda: self.choisir_format("video")
+		)
+		self.bouton_video.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+		self.bouton_audio = ctk.CTkButton(
 			formats,
 			text="Audio MP3",
-			variable=self.format_choisi,
-			value="mp3",
-			command=self.actualiser_qualite
-		).pack(side="left")
+			height=48,
+			corner_radius=8,
+			font=("Segoe UI", 13, "bold"),
+			fg_color="#343434",
+			hover_color="#414141",
+			border_width=0,
+			command=lambda: self.choisir_format("mp3")
+		)
+		self.bouton_audio.grid(row=0, column=1, sticky="ew", padx=(5, 0))
 
-		# Qualité
-		ttk.Label(
-			principal,
-			text="Qualité vidéo"
-		).pack(anchor="w")
+		ligne_options = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_options.grid(
+			row=3,
+			column=0,
+			sticky="ew",
+			pady=(0, espacement_section)
+		)
+		ligne_options.grid_columnconfigure(2, weight=1)
 
-		self.list_qualite = ttk.Combobox(
-			principal,
-			textvariable=self.qualite,
+		self.list_qualite = ctk.CTkComboBox(
+			ligne_options,
+			values=["480p", "720p", "1080p", "2K", "4K"],
+			variable=self.qualite,
+			width=160,
+			height=38,
+			corner_radius=8,
+			border_color=bordure,
+			fg_color=carte,
+			button_color="#414141",
+			button_hover_color="#4b4b4b",
+			dropdown_fg_color="#343434",
+			dropdown_hover_color="#414141",
+			dropdown_text_color=texte,
+			text_color=texte,
+		)
+		self.list_qualite.grid(
+			row=0,
+			column=0,
+			sticky="w",
+			padx=(0, 12)
+		)
+		self.list_qualite.set("720p")
+
+		self.list_playlist = ctk.CTkComboBox(
+			ligne_options,
 			values=[
-				"480p",
-				"720p",
-				"1080p",
-				"1440p (2k)",
-				"2160p (4k)"
+				"Un élément",
+				"Toute la playlist",
+				"Sélection personnalisée",
 			],
-			state="readonly"
+			variable=self.option_playlist,
+			width=210,
+			height=38,
+			corner_radius=8,
+			border_color=bordure,
+			fg_color=carte,
+			button_color="#414141",
+			button_hover_color="#4b4b4b",
+			dropdown_fg_color="#343434",
+			dropdown_hover_color="#414141",
+			dropdown_text_color=texte,
+			text_color=texte,
+			command=self.changer_playlist,
 		)
-		self.list_qualite.pack(
-			fill="x",
-			pady=(6, 18)
+		self.list_playlist.grid(
+			row=0,
+			column=1,
+			sticky="w",
+			padx=(0, 12)
 		)
 
-		# Gestion de la playlist
-		ttk.Label(
-			principal,
-			text="contenu à télécharger"
-		).pack(anchor="w")
-
-		cadre_playlist = ttk.Frame(principal)
-		cadre_playlist.pack(fill="x", pady=(6, 10))
-
-		ttk.Radiobutton(
-			cadre_playlist,
-			text="Un seul élément",
-			variable=self.playlist,
-			value="unique",
-			command=self.actualiser_playlist
-		).pack(anchor="w")
-
-		ttk.Radiobutton(
-			cadre_playlist,
-			text="Toute la playlist",
-			variable=self.playlist,
-			value="complete",
-			command=self.actualiser_playlist
-		).pack(anchor="w")
-
-		ttk.Radiobutton(
-			cadre_playlist,
-			text="Sélection personnalisée",
-			variable=self.playlist,
-			value="custom",
-			command=self.actualiser_playlist
-		).pack(anchor="w")
-
-		self.champ_selection = ttk.Entry(
-			principal,
+		self.champ_selection = ctk.CTkEntry(
+			ligne_options,
 			textvariable=self.selection_playlist,
-			state="disabled"
+			height=38,
+			corner_radius=8,
+			border_color=bordure,
+			fg_color=carte,
+			placeholder_text="Numéros, par exemple : 1, 2, 3-5"
 		)
-		self.champ_selection.pack(fill="x", pady=(0, 18))
+		self.champ_selection.grid(
+			row=0,
+			column=2,
+			sticky="ew"
+		)
+		self.champ_selection.grid_remove()
 
-		# Dossier de destination
-		ttk.Label(
-			principal,
-			text="Dossier de destination"
-		).pack(anchor="w")
-
-		ligne_dossier = ttk.Frame(principal)
-		ligne_dossier.pack(fill="x", pady=(6, 22))
-
-		self.champ_dossier = ttk.Entry(
+		etiquette(contenu, "Dossier de destination", 4)
+		ligne_dossier = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_dossier.grid(
+			row=5,
+			column=0,
+			sticky="ew",
+			pady=(0, espacement_section)
+		)
+		ligne_dossier.grid_columnconfigure(0, weight=1)
+		self.champ_dossier = ctk.CTkEntry(
 			ligne_dossier,
 			textvariable=self.dossier,
+			height=46,
+			corner_radius=9,
+			border_color=bordure,
+			fg_color=carte,
 			state="readonly"
 		)
-		self.champ_dossier.pack(
-			side="left",
-			fill="x",
-			expand=True
-		)
-
-		ttk.Button(
+		self.champ_dossier.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+		ctk.CTkButton(
 			ligne_dossier,
-			text="Parcourir...",
+			text="Choisir un dossier…",
+			width=150,
+			height=46,
+			corner_radius=9,
+			fg_color="#383838",
+			hover_color="#454545",
+			border_width=1,
+			border_color=bordure,
 			command=self.choisir_dossier
-		).pack(side="left", padx=(8, 0))
+		).grid(row=0, column=1)
 
-		# Bouton de téléchargement
-		self.bouton_telecharger = ttk.Button(
-			principal,
+		actions = ctk.CTkFrame(contenu, fg_color="transparent")
+		actions.grid(
+			row=6,
+			column=0,
+			sticky="ew",
+			pady=(0, espacement_section)
+		)
+		actions.grid_columnconfigure(0, weight=1)
+		self.bouton_telecharger = ctk.CTkButton(
+			actions,
 			text="Télécharger",
-			style="Accent.TButton",
+			height=52,
+			corner_radius=10,
+			fg_color=accent,
+			hover_color="#A63F30",
+			font=("Segoe UI", 15, "bold"),
 			command=self.telecharger
 		)
-		self.bouton_telecharger.pack(fill="x")
-
-		self.bouton_arreter = ttk.Button(
-			principal,
-			text="Arrêter",
-			command=self.arreter_telechargement,
-			state="disabled"
+		self.bouton_telecharger.grid(row=0, column=0, sticky="ew")
+		self.bouton_arreter = ctk.CTkButton(
+			actions,
+			text="Arrêter le téléchargement",
+			height=38,
+			corner_radius=9,
+			fg_color="#383838",
+			hover_color="#454545",
+			border_width=1,
+			border_color=bordure,
+			command=self.arreter_telechargement
 		)
-		self.bouton_arreter.pack(fill="x", pady=(8, 0))
-
-
-		# Statut
-		ttk.Separator(
-			principal,
-			orient="horizontal"
-		).pack(fill="x", pady=18)
-
-		ttk.Label(
-			principal,
-			textvariable=self.statut
-		).pack(anchor="w")
-
-		# Barre de progression
-		ttk.Progressbar(
-			principal,
-			variable=self.progression,
-			maximum=100,
-			mode="determinate",
-		).pack(fill="x", pady=(12, 6))
-
-		# Pourcentage et détails
-
-		self.infos_progression = ttk.Label(
-			principal,
-			textvariable=self.details_progression
+		self.bouton_arreter.grid(
+			row=1,
+			column=0,
+			sticky="ew",
+			pady=(8, 0)
 		)
-		self.infos_progression.pack(anchor="w")
+		self.bouton_arreter.grid_remove()
 
-		# Taille, vitesse et temps restant
-		ligne_infos = ttk.Frame(principal)
-		ligne_infos.pack(fill="x", pady=(8, 0))
-
-		ttk.Label(
-			ligne_infos,
-			textvariable=self.taille_telechargee
-		).pack(side="left", expand=True, anchor="w")
-
-		ttk.Label(
-			ligne_infos,
-			textvariable=self.vitesse
-		).pack(side="left", expand=True, anchor="w")
-
-		ttk.Label(
-			ligne_infos,
-			textvariable=self.temps_restant
-		).pack(side="left", expand=True, anchor="w")
+		progression_entete = ctk.CTkFrame(contenu, fg_color="transparent")
+		progression_entete.grid(row=7, column=0, sticky="ew", pady=(0, 6))
+		progression_entete.grid_columnconfigure(0, weight=1)
+		ctk.CTkLabel(
+			progression_entete,
+			text="Progression",
+			text_color=texte,
+			font=("Segoe UI", 13, "bold")
+		).grid(row=0, column=0, sticky="w")
+		ctk.CTkLabel(
+			progression_entete,
+			textvariable=self.statut,
+			text_color=secondaire
+		).grid(row=0, column=1, sticky="e")
+		self.barre_progression = ctk.CTkProgressBar(
+			contenu,
+			height=8,
+			corner_radius=4,
+			progress_color=accent,
+			fg_color="#1d1d1d"
+		)
+		self.barre_progression.grid(row=8, column=0, sticky="ew")
+		self.barre_progression.set(0)
+		self.infos_progression = ctk.CTkLabel(
+			contenu,
+			textvariable=self.details_progression,
+			text_color=secondaire,
+			font=("Segoe UI", 11)
+		)
+		self.infos_progression.grid(row=9, column=0, sticky="w", pady=(6, 0))
 
 		self.actualiser_qualite()
+		self.actualiser_format()
+		self.actualiser_playlist()
+		self.changer_playlist("Un élément")
+
+	# Gestion des préférences de téléchargement
+	def choisir_format(self, format_choisi):
+		self.format_choisi.set(format_choisi)
+		self.actualiser_format()
+		self.actualiser_qualite()
+
+	def actualiser_format(self):
+		for bouton, actif in (
+			(self.bouton_video, self.format_choisi.get() == "video"),
+			(self.bouton_audio, self.format_choisi.get() == "mp3"),
+		):
+			bouton.configure(
+				fg_color="#424242" if actif else "#343434",
+				hover_color="#4b4b4b" if actif else "#414141",
+				text_color="#f4f4f4",
+			)
+
+	def changer_playlist(self, choix):
+		valeur = {
+			"Un élément": "unique",
+			"Toute la playlist": "complete",
+			"Sélection personnalisée": "custom",
+		}[choix]
+		self.playlist.set(valeur)
+		self.actualiser_playlist()
 
 	def choisir_dossier(self):
 		dossier = filedialog.askdirectory(
@@ -275,25 +364,28 @@ class YtDlpToolApp:
 			except OSError as erreur:
 				self.statut.set(f"Erreur : {erreur}")
 
+	# Mise à jour des choix affichés
 	def actualiser_qualite(self):
-		if self.format_choisi.get() == "mp3":
-			self.list_qualite.configure(state="disabled")
-		else:
-			self.list_qualite.configure(state="readonly")
+		qualite_desactivee = self.format_choisi.get() == "mp3"
+		self.list_qualite.configure(
+			state="disabled" if qualite_desactivee else "readonly"
+		)
 
 	def actualiser_playlist(self):
 		if self.playlist.get() == "custom":
-			self.champ_selection.configure(state="normal")
+			self.champ_selection.grid()
 		else:
-			self.champ_selection.configure(state="disabled")
+			self.champ_selection.grid_remove()
 			self.selection_playlist.set("")
 
+	# Lancement, suivi et arrêt du téléchargement
 	def arreter_telechargement(self):
 		processus = self.processus
 
 		if processus is not None and processus.poll() is None:
 			self.arret_demande = True
 			self.bouton_arreter.configure(state="disabled")
+			self.bouton_arreter.grid()
 			self.statut.set("Arrêt du téléchargement...")
 
 			try:
@@ -303,13 +395,13 @@ class YtDlpToolApp:
 						"/F",
 						"/T",
 						"/PID",
-						str(processus.pid)
+						str(processus.pid),
 					],
 					capture_output=True,
 					text=True,
 					encoding="utf-8",
 					errors="replace",
-					check=False
+					check=False,
 				)
 
 			except OSError as erreur:
@@ -330,7 +422,6 @@ class YtDlpToolApp:
 			self.champ_url.focus_set()
 			return
 
-
 		if not dossier:
 			self.statut.set("Veuillez choisir un dossier.")
 			return
@@ -338,9 +429,13 @@ class YtDlpToolApp:
 		qualite = None
 
 		if format_choisi == "video":
-			qualite = int(
-				self.qualite.get().split("p")[0]
-			)
+			qualite = {
+				"480p": 480,
+				"720p": 720,
+				"1080p": 1080,
+				"2K": 1440,
+				"4K": 2160,
+			}[self.qualite.get()]
 			format_choisi = "qualite"
 
 		playlist = self.playlist.get()
@@ -362,12 +457,13 @@ class YtDlpToolApp:
 			qualite,
 			playlist,
 			selection,
-			dossier
-		)	
+			dossier,
+		)
 
 		self.arret_demande = False
 		self.bouton_telecharger.configure(state="disabled")
 		self.bouton_arreter.configure(state="normal")
+		self.bouton_arreter.grid()
 		self.statut.set("Téléchargement en cours...")
 
 		thread = threading.Thread(
@@ -378,8 +474,6 @@ class YtDlpToolApp:
 		thread.start()
 
 	def executer_telechargement(self, commande):
-		import re
-
 		try:
 			self.processus = subprocess.Popen(
 				commande,
@@ -388,7 +482,7 @@ class YtDlpToolApp:
 				text=True,
 				encoding="utf-8",
 				errors="replace",
-				bufsize=1
+				bufsize=1,
 			)
 
 			for ligne in self.processus.stdout:
@@ -436,10 +530,10 @@ class YtDlpToolApp:
 			message
 		)
 
+	# Affichage de l'avancement et du résultat
 	def actualiser_progression(self, pourcentage, details):
-		import re
-
 		self.progression.set(pourcentage)
+		self.barre_progression.set(pourcentage / 100)
 		self.details_progression.set(
 			f"Progression : {pourcentage:.0f} %"
 		)
@@ -471,26 +565,44 @@ class YtDlpToolApp:
 		else:
 			self.vitesse.set("Vitesse : -")
 
-		if temps:			
+		if temps:
 			self.temps_restant.set(
 				f"Temps restant : {temps.group(1)}"
 			)
 		else:
 			self.temps_restant.set("Temps restant : -")
 
+		indicateurs = []
+		if taille:
+			indicateurs.append(f"Taille : {taille.group(1)}")
+		if vitesse:
+			indicateurs.append(f"Vitesse : {vitesse.group(1)}")
+		if temps:
+			indicateurs.append(f"Temps restant : {temps.group(1)}")
+		if indicateurs:
+			self.details_progression.set(
+				f"{pourcentage:.0f} %    "
+				+ "    ".join(indicateurs)
+			)
 
 	def terminer_telechargement(self, message):
-		self.progression.set(100 if message == "Téléchargement terminé." else 0)
+		reussi = message == "Téléchargement terminé."
+		self.progression.set(100 if reussi else 0)
+		self.barre_progression.set(
+			1 if reussi else 0
+		)
 		self.statut.set(message)
 		self.bouton_telecharger.configure(state="normal")
 		self.bouton_arreter.configure(state="disabled")
+		self.bouton_arreter.grid_remove()
 		self.processus = None
 
+
 def lancer_interface():
-	root = tk.Tk()
+	root = ctk.CTk()
 	YtDlpToolApp(root)
 	root.mainloop()
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
 	lancer_interface()
