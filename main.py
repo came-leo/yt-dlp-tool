@@ -3,7 +3,7 @@ import os
 import sys
 from urllib.parse import urlparse, parse_qs
 import subprocess
-from downloader import creer_commande
+from downloader import creer_commande, selection_playlist_valide
 
 
 # Chemins du projet
@@ -29,12 +29,6 @@ FICHIER_PARAMETRES = os.path.join(
 	"settings.json"
 )
 
-FICHIER_COOKIES = os.path.join(
-	DOSSIER_PROJET,
-	"cookies.txt"
-)
-
-
 def charger_dossier():
 	# Récupère le dernier dossier enregistré
 
@@ -47,8 +41,10 @@ def charger_dossier():
 			) as fichier:
 				parametres = json.load(fichier)
 
-			dossier = parametres.get(
-				"dossier_telechargement"
+			dossier = (
+				parametres.get("dossier_telechargement")
+				if isinstance(parametres, dict)
+				else None
 			)
 
 			if isinstance(dossier, str) and dossier.strip():
@@ -241,55 +237,11 @@ def demander_playlist():
 				"Éléments (ex. 1,2,3-5) : "
 			).strip()
 
-			if selection:
+			if selection_playlist_valide(selection):
 				return "custom", selection
 
 		print("Choix invalide.")
 
-
-def creer_commande(url, format_choisi, qualite, playlist, selection, dossier):
-	# Options de base
-	commande = [
-		"yt-dlp",
-		"--js-runtimes", "node"
-	]
-
-	# Gestion des cookies
-
-	# Choix du format
-	if format_choisi == "mp3":
-		commande.extend(["-x", "--audio-format", "mp3"])
-		modele = "%(title).80s.%(ext)s"
-	else:
-		limite = qualite if format_choisi == "qualite" else 720
-
-		format_video = (
-			f"bestvideo[height<=?{limite}]+bestaudio/"
-			f"best[height<=?{limite}]/best"
-		)
-
-		commande.extend([
-			"-f", format_video,
-			"--merge-output-format", "mp4",
-		])
-
-		modele = "%(title).80s_%(height)sp.%(ext)s"
-
-	# Gestion de la playlist
-	if playlist == "unique":
-		commande.append("--no-playlist")
-	elif playlist == "complete":
-		commande.append("--yes-playlist")
-	elif playlist == "custom":
-		commande.extend(["--yes-playlist", "--playlist-items", selection])
-
-	# Dossier et nom des fichiers
-	commande.extend([
-		"-o", os.path.join(dossier, modele),
-		url,
-	])
-
-	return commande
 
 if __name__ == "__main__":
 	try:

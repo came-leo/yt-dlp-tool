@@ -1,6 +1,26 @@
 import os
 
 
+def selection_playlist_valide(selection):
+	if not selection.strip():
+		return False
+
+	for element in selection.split(","):
+		bornes = element.strip().split("-")
+		if len(bornes) > 2:
+			return False
+		if not all(borne.isdigit() for borne in bornes):
+			return False
+
+		valeurs = [int(borne) for borne in bornes]
+		if any(valeur < 1 for valeur in valeurs):
+			return False
+		if len(valeurs) == 2 and valeurs[0] > valeurs[1]:
+			return False
+
+	return True
+
+
 def creer_commande(
 	url,
 	format_choisi,

@@ -1,4 +1,6 @@
 import re
+import os
+import signal
 import subprocess
 import threading
 import tkinter as tk
@@ -6,7 +8,7 @@ from tkinter import filedialog
 
 import customtkinter as ctk
 
-from downloader import creer_commande
+from downloader import creer_commande, selection_playlist_valide
 from main import charger_dossier, enregistrer_dossier
 
 
@@ -29,17 +31,14 @@ class YtDlpToolApp:
 		self.option_playlist = tk.StringVar(value="Un élément")
 		self.selection_playlist = tk.StringVar()
 		self.statut = tk.StringVar(value="Prêt")
-		self.progression = tk.DoubleVar(value=0)
 		self.details_progression = tk.StringVar(
 			value="En attente d'un téléchargement"
 		)
 		self.processus = None
 		self.arret_demande = False
-		self.taille_telechargee = tk.StringVar(value="Téléchargé : -")
-		self.vitesse = tk.StringVar(value="Vitesse : -")
-		self.temps_restant = tk.StringVar(value="Temps restant : -")
 
 		self.creer_interface()
+		self.root.after(100, self.champ_url.focus_set)
 
 	# Construction de l'interface
 	def creer_interface(self):
@@ -49,7 +48,6 @@ class YtDlpToolApp:
 		secondaire = "#b8b8b8"
 		accent = "#C0503D"
 		espacement_section = 18
-		self.accent = accent
 
 		# La fenêtre sert directement de conteneur principal.
 		principal = self.root
@@ -106,6 +104,28 @@ class YtDlpToolApp:
 			column=0,
 			sticky="ew",
 			pady=(0, espacement_section)
+		)
+		self.menu_url = tk.Menu(self.root, tearoff=False)
+		self.menu_url.add_command(
+			label="Couper",
+			command=lambda: self.champ_url._entry.event_generate("<<Cut>>")
+		)
+		self.menu_url.add_command(
+			label="Copier",
+			command=lambda: self.champ_url._entry.event_generate("<<Copy>>")
+		)
+		self.menu_url.add_command(
+			label="Coller",
+			command=lambda: self.champ_url._entry.event_generate("<<Paste>>")
+		)
+		self.menu_url.add_separator()
+		self.menu_url.add_command(
+			label="Tout sélectionner",
+			command=self.selectionner_toute_url
+		)
+		self.champ_url._entry.bind(
+			"<Button-3>",
+			self.afficher_menu_url
 		)
 
 		formats = ctk.CTkFrame(contenu, fg_color="transparent")
@@ -187,8 +207,6 @@ class YtDlpToolApp:
 			sticky="w",
 			padx=(0, 12)
 		)
-		self.list_qualite.set("720p")
-
 		self.list_playlist = ctk.CTkComboBox(
 			ligne_options,
 			values=[
@@ -335,10 +353,24 @@ class YtDlpToolApp:
 		self.infos_progression.grid(row=9, column=0, sticky="w", pady=(6, 0))
 
 		self.actualiser_qualite()
-		self.actualiser_playlist()
 		self.changer_playlist("Un élément")
 
 	# Gestion des préférences de téléchargement
+	def afficher_menu_url(self, evenement):
+		try:
+			self.menu_url.tk_popup(
+				evenement.x_root,
+				evenement.y_root
+			)
+		finally:
+			self.menu_url.grab_release()
+
+	def selectionner_toute_url(self):
+		champ = self.champ_url._entry
+		champ.focus_set()
+		champ.select_range(0, tk.END)
+		champ.icursor(tk.END)
+
 	def changer_playlist(self, choix):
 		valeur = {
 			"Un élément": "unique",
@@ -380,27 +412,23 @@ class YtDlpToolApp:
 	def arreter_telechargement(self):
 		processus = self.processus
 
-		if processus is not None and processus.poll() is None:
+		if processus is None:
+			if self.bouton_telecharger.cget("state") == "disabled":
+				self.arret_demande = True
+				self.bouton_arreter.configure(state="disabled")
+				self.statut.set("Arrêt du téléchargement...")
+			else:
+				self.statut.set("Aucun téléchargement en cours")
+			return
+
+		if processus.poll() is None:
 			self.arret_demande = True
 			self.bouton_arreter.configure(state="disabled")
 			self.bouton_arreter.grid()
 			self.statut.set("Arrêt du téléchargement...")
 
 			try:
-				resultat = subprocess.run(
-					[
-						"taskkill",
-						"/F",
-						"/T",
-						"/PID",
-						str(processus.pid),
-					],
-					capture_output=True,
-					text=True,
-					encoding="utf-8",
-					errors="replace",
-					check=False,
-				)
+				self.arreter_processus(processus)
 
 			except OSError as erreur:
 				self.arret_demande = False
@@ -409,6 +437,30 @@ class YtDlpToolApp:
 
 		else:
 			self.statut.set("Aucun téléchargement en cours")
+
+	def arreter_processus(self, processus):
+		if os.name != "nt":
+			os.killpg(processus.pid, signal.SIGTERM)
+			return
+
+		resultat = subprocess.run(
+			[
+				"taskkill",
+				"/F",
+				"/T",
+				"/PID",
+				str(processus.pid),
+			],
+			capture_output=True,
+			text=True,
+			encoding="utf-8",
+			errors="replace",
+			check=False,
+		)
+
+		if resultat.returncode != 0 and processus.poll() is None:
+			detail = resultat.stderr.strip() or "taskkill a échoué."
+			raise OSError(detail)
 
 	def telecharger(self):
 		url = self.url.get().strip()
@@ -442,9 +494,9 @@ class YtDlpToolApp:
 		if playlist == "custom":
 			selection = self.selection_playlist.get().strip()
 
-			if not selection:
+			if not selection_playlist_valide(selection):
 				self.statut.set(
-					"Indique les éléments à télécharger."
+					"Sélectionne les éléments sous la forme 1, 2, 3-5."
 				)
 				self.champ_selection.focus_set()
 				return
@@ -457,6 +509,16 @@ class YtDlpToolApp:
 			selection,
 			dossier,
 		)
+		commande[-1:-1] = [
+			"--no-colors",
+			"--progress-template",
+			(
+				"download:%(progress._percent_str)s|"
+				"%(progress._total_bytes_str)s|"
+				"%(progress._speed_str)s|"
+				"%(progress._eta_str)s"
+			),
+		]
 
 		self.arret_demande = False
 		self.bouton_telecharger.configure(state="disabled")
@@ -473,6 +535,7 @@ class YtDlpToolApp:
 
 	def executer_telechargement(self, commande):
 		try:
+			detail_erreur = None
 			self.processus = subprocess.Popen(
 				commande,
 				stdout=subprocess.PIPE,
@@ -481,24 +544,34 @@ class YtDlpToolApp:
 				encoding="utf-8",
 				errors="replace",
 				bufsize=1,
+				start_new_session=(os.name != "nt"),
 			)
+			if self.arret_demande:
+				self.arreter_processus(self.processus)
 
 			for ligne in self.processus.stdout:
-				correspondance = re.search(
-					r"\[download\]\s+(\d+(?:\.\d+)?)%",
-					ligne
-				)
+				if "[error]" in ligne.lower() or "error:" in ligne.lower():
+					detail_erreur = ligne.strip()
 
-				if correspondance:
-					pourcentage = float(
-						correspondance.group(1)
+				valeurs = ligne.strip().split("|", 3)
+				if len(valeurs) == 4:
+					try:
+						pourcentage = float(
+							valeurs[0].replace("%", "").strip()
+						)
+					except ValueError:
+						continue
+
+					details = (
+						f"of {valeurs[1]} at {valeurs[2]} "
+						f"ETA {valeurs[3]}"
 					)
 
 					self.root.after(
 						0,
 						self.actualiser_progression,
 						pourcentage,
-						ligne.strip()
+						details
 					)
 
 			code_retour = self.processus.wait()
@@ -509,9 +582,11 @@ class YtDlpToolApp:
 				message = "Téléchargement terminé."
 			else:
 				message = (
-					f"Echec du téléchargement "
+					f"Échec du téléchargement "
 					f"(code {code_retour})"
 				)
+				if detail_erreur:
+					message += f" : {detail_erreur[:180]}"
 
 		except FileNotFoundError:
 			message = (
@@ -530,7 +605,6 @@ class YtDlpToolApp:
 
 	# Affichage de l'avancement et du résultat
 	def actualiser_progression(self, pourcentage, details):
-		self.progression.set(pourcentage)
 		self.barre_progression.set(pourcentage / 100)
 		self.details_progression.set(
 			f"Progression : {pourcentage:.0f} %"
@@ -551,25 +625,6 @@ class YtDlpToolApp:
 			details
 		)
 
-		self.taille_telechargee.set(
-			f"Téléchargé : {taille.group(1)}"
-			if taille else "Téléchargé : -"
-		)
-
-		if vitesse:
-			self.vitesse.set(
-				f"Vitesse : {vitesse.group(1)}"
-			)
-		else:
-			self.vitesse.set("Vitesse : -")
-
-		if temps:
-			self.temps_restant.set(
-				f"Temps restant : {temps.group(1)}"
-			)
-		else:
-			self.temps_restant.set("Temps restant : -")
-
 		indicateurs = []
 		if taille:
 			indicateurs.append(f"Taille : {taille.group(1)}")
@@ -585,11 +640,22 @@ class YtDlpToolApp:
 
 	def terminer_telechargement(self, message):
 		reussi = message == "Téléchargement terminé."
-		self.progression.set(100 if reussi else 0)
 		self.barre_progression.set(
 			1 if reussi else 0
 		)
 		self.statut.set(message)
+
+		if message in (
+			"Téléchargement terminé.",
+			"Téléchargement arrêté.",
+		):
+			self.url.set("")
+			self.format_choisi.set("video")
+			self.qualite.set("720p")
+			self.actualiser_qualite()
+			self.option_playlist.set("Un élément")
+			self.changer_playlist("Un élément")
+
 		self.bouton_telecharger.configure(state="normal")
 		self.bouton_arreter.configure(state="disabled")
 		self.bouton_arreter.grid_remove()
