@@ -64,5 +64,21 @@ Les fichiers sont enregistrés dans le dossier de téléchargement configuré da
 
 La qualité disponible dépend des formats fournis par la plateforme source. Certains téléchargements peuvent nécessiter une mise à jour de yt-dlp.
 
+## 7. Créer le dossier Windows prêt à lancer
+
+Depuis Windows, installer les dépendances de construction :
+
+```powershell
+python -m pip install -r requirements-build.txt
+```
+
+Vérifier que `yt-dlp.exe`, `ffmpeg.exe` et `ffprobe.exe` sont accessibles depuis le `PATH`, puis lancer :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
+```
+
+Le dossier créé est `dist\yt-dlp-tool`. Lancer `yt-dlp-tool.exe` à l'intérieur. Le paquet inclut yt-dlp et FFmpeg ; Node.js reste une installation séparée.
+
 **Projet :** `yt-dlp-tool`  
 **Technologie principale :** Python et yt-dlp

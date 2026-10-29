@@ -16,12 +16,11 @@ class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
 		self.root.title("yt-dlp-tool")
-		self.root.geometry("880x720")
+		self.root.geometry("880x620")
 		self.root.minsize(720, 620)
-		self.root.configure(fg_color="#2d2d2d")
-
-		ctk.set_appearance_mode("dark")
+		ctk.set_appearance_mode("light")
 		ctk.set_default_color_theme("dark-blue")
+		self.mode_clair = True
 
 		self.dossier = tk.StringVar(value=charger_dossier())
 		self.url = tk.StringVar()
@@ -42,12 +41,17 @@ class YtDlpToolApp:
 
 	# Construction de l'interface
 	def creer_interface(self):
-		carte = "#2d2d2d"
-		bordure = "#4a4a4a"
-		texte = "#f4f4f4"
-		secondaire = "#b8b8b8"
-		accent = "#C0503D"
+		carte = ("#ffffff", "#2d2d2d")
+		fond_saisie = ("#ffffff", "#2d2d2d")
+		fond_bouton = ("#eeeeee", "#383838")
+		survol_bouton = ("#dddddd", "#454545")
+		bordure = ("#d0d0d0", "#4a4a4a")
+		texte = ("#252525", "#f4f4f4")
+		secondaire = ("#666666", "#b8b8b8")
+		accent = ("#C44732", "#C0503D")
+		survol_accent = ("#B33B2B", "#A63F30")
 		espacement_section = 18
+		self.root.configure(fg_color=carte)
 
 		# La fenêtre sert directement de conteneur principal.
 		principal = self.root
@@ -56,6 +60,25 @@ class YtDlpToolApp:
 		entete = ctk.CTkFrame(principal, fg_color="transparent")
 		entete.grid(row=0, column=0, sticky="ew", padx=32, pady=(28, 14))
 		entete.grid_columnconfigure(0, weight=1)
+		self.bouton_theme = ctk.CTkButton(
+			entete,
+			text="◐",
+			width=36,
+			height=36,
+			corner_radius=18,
+			fg_color="transparent",
+			hover_color=("#e8e8e8", "#414141"),
+			text_color=texte,
+			font=("Segoe UI Symbol", 19),
+			command=self.basculer_theme
+		)
+		self.bouton_theme.grid(
+			row=0,
+			column=1,
+			rowspan=2,
+			sticky="ne",
+			padx=(12, 0)
+		)
 		ctk.CTkLabel(
 			entete,
 			text="yt-dlp-tool",
@@ -69,7 +92,11 @@ class YtDlpToolApp:
 			font=("Segoe UI", 12)
 		).grid(row=1, column=0, sticky="nw")
 
-		separateur = ctk.CTkFrame(principal, height=1, fg_color="#414141")
+		separateur = ctk.CTkFrame(
+			principal,
+			height=1,
+			fg_color=("#d8d8d8", "#414141")
+		)
 		separateur.grid(row=1, column=0, sticky="ew", padx=32, pady=(0, 20))
 
 		contenu = ctk.CTkFrame(principal, fg_color="transparent")
@@ -96,7 +123,7 @@ class YtDlpToolApp:
 			height=46,
 			corner_radius=9,
 			border_color=bordure,
-			fg_color=carte,
+			fg_color=fond_saisie,
 			placeholder_text="https://www.youtube.com/..."
 		)
 		self.champ_url.grid(
@@ -148,7 +175,7 @@ class YtDlpToolApp:
 			border_width_unchecked=2,
 			border_width_checked=5,
 			fg_color=accent,
-			hover_color="#A63F30",
+			hover_color=survol_accent,
 			border_color=bordure,
 			text_color=texte,
 			font=("Segoe UI", 13),
@@ -168,7 +195,7 @@ class YtDlpToolApp:
 			border_width_unchecked=2,
 			border_width_checked=5,
 			fg_color=accent,
-			hover_color="#A63F30",
+			hover_color=survol_accent,
 			border_color=bordure,
 			text_color=texte,
 			font=("Segoe UI", 13),
@@ -193,11 +220,11 @@ class YtDlpToolApp:
 			height=38,
 			corner_radius=8,
 			border_color=bordure,
-			fg_color=carte,
-			button_color="#414141",
-			button_hover_color="#4b4b4b",
-			dropdown_fg_color="#343434",
-			dropdown_hover_color="#414141",
+			fg_color=fond_saisie,
+			button_color=("#e5e5e5", "#414141"),
+			button_hover_color=("#d6d6d6", "#4b4b4b"),
+			dropdown_fg_color=("#ffffff", "#343434"),
+			dropdown_hover_color=("#e8e8e8", "#414141"),
 			dropdown_text_color=texte,
 			text_color=texte,
 		)
@@ -219,11 +246,11 @@ class YtDlpToolApp:
 			height=38,
 			corner_radius=8,
 			border_color=bordure,
-			fg_color=carte,
-			button_color="#414141",
-			button_hover_color="#4b4b4b",
-			dropdown_fg_color="#343434",
-			dropdown_hover_color="#414141",
+			fg_color=fond_saisie,
+			button_color=("#e5e5e5", "#414141"),
+			button_hover_color=("#d6d6d6", "#4b4b4b"),
+			dropdown_fg_color=("#ffffff", "#343434"),
+			dropdown_hover_color=("#e8e8e8", "#414141"),
 			dropdown_text_color=texte,
 			text_color=texte,
 			command=self.changer_playlist,
@@ -241,7 +268,7 @@ class YtDlpToolApp:
 			height=38,
 			corner_radius=8,
 			border_color=bordure,
-			fg_color=carte,
+			fg_color=fond_saisie,
 			placeholder_text="Numéros, par exemple : 1, 2, 3-5"
 		)
 		self.champ_selection.grid(
@@ -266,7 +293,7 @@ class YtDlpToolApp:
 			height=46,
 			corner_radius=9,
 			border_color=bordure,
-			fg_color=carte,
+			fg_color=fond_saisie,
 			state="readonly"
 		)
 		self.champ_dossier.grid(row=0, column=0, sticky="ew", padx=(0, 8))
@@ -276,10 +303,11 @@ class YtDlpToolApp:
 			width=150,
 			height=46,
 			corner_radius=9,
-			fg_color="#383838",
-			hover_color="#454545",
+			fg_color=fond_bouton,
+			hover_color=survol_bouton,
 			border_width=1,
 			border_color=bordure,
+			text_color=texte,
 			command=self.choisir_dossier
 		).grid(row=0, column=1)
 
@@ -291,35 +319,43 @@ class YtDlpToolApp:
 			pady=(0, espacement_section)
 		)
 		actions.grid_columnconfigure(0, weight=1)
+		actions.grid_columnconfigure(1, weight=2)
 		self.bouton_telecharger = ctk.CTkButton(
 			actions,
 			text="Télécharger",
 			height=52,
 			corner_radius=10,
 			fg_color=accent,
-			hover_color="#A63F30",
+			hover_color=survol_accent,
+			text_color="#FFFFFF",
 			font=("Segoe UI", 15, "bold"),
 			command=self.telecharger
 		)
-		self.bouton_telecharger.grid(row=0, column=0, sticky="ew")
-		self.bouton_arreter = ctk.CTkButton(
+		self.bouton_telecharger.grid(
+			row=0,
+			column=1,
+			sticky="ew",
+			padx=(5, 0)
+		)
+		self.bouton_annuler = ctk.CTkButton(
 			actions,
-			text="Arrêter le téléchargement",
-			height=38,
+			text="Annuler",
+			height=52,
 			corner_radius=9,
-			fg_color="#383838",
-			hover_color="#454545",
+			fg_color=("#555555", "#444444"),
+			hover_color=("#444444", "#555555"),
 			border_width=1,
 			border_color=bordure,
-			command=self.arreter_telechargement
+			text_color="#FFFFFF",
+			font=("Segoe UI", 15, "bold"),
+			command=self.annuler_telechargement
 		)
-		self.bouton_arreter.grid(
-			row=1,
+		self.bouton_annuler.grid(
+			row=0,
 			column=0,
 			sticky="ew",
-			pady=(8, 0)
+			padx=(0, 5)
 		)
-		self.bouton_arreter.grid_remove()
 
 		progression_entete = ctk.CTkFrame(contenu, fg_color="transparent")
 		progression_entete.grid(row=7, column=0, sticky="ew", pady=(0, 6))
@@ -339,8 +375,8 @@ class YtDlpToolApp:
 			contenu,
 			height=8,
 			corner_radius=4,
-			progress_color=accent,
-			fg_color="#1d1d1d"
+			progress_color="#4f9e63",
+			fg_color=("#dedede", "#1d1d1d")
 		)
 		self.barre_progression.grid(row=8, column=0, sticky="ew")
 		self.barre_progression.set(0)
@@ -356,6 +392,12 @@ class YtDlpToolApp:
 		self.changer_playlist("Un élément")
 
 	# Gestion des préférences de téléchargement
+	def basculer_theme(self):
+		self.mode_clair = not self.mode_clair
+		ctk.set_appearance_mode(
+			"light" if self.mode_clair else "dark"
+		)
+
 	def afficher_menu_url(self, evenement):
 		try:
 			self.menu_url.tk_popup(
@@ -408,23 +450,21 @@ class YtDlpToolApp:
 			self.champ_selection.grid_remove()
 			self.selection_playlist.set("")
 
-	# Lancement, suivi et arrêt du téléchargement
-	def arreter_telechargement(self):
+	# Lancement, suivi et annulation du téléchargement
+	def annuler_telechargement(self):
 		processus = self.processus
 
 		if processus is None:
 			if self.bouton_telecharger.cget("state") == "disabled":
 				self.arret_demande = True
-				self.bouton_arreter.configure(state="disabled")
 				self.statut.set("Arrêt du téléchargement...")
 			else:
-				self.statut.set("Aucun téléchargement en cours")
+				self.reinitialiser_choix()
+				self.statut.set("Prêt")
 			return
 
 		if processus.poll() is None:
 			self.arret_demande = True
-			self.bouton_arreter.configure(state="disabled")
-			self.bouton_arreter.grid()
 			self.statut.set("Arrêt du téléchargement...")
 
 			try:
@@ -432,11 +472,19 @@ class YtDlpToolApp:
 
 			except OSError as erreur:
 				self.arret_demande = False
-				self.bouton_arreter.configure(state="normal")
 				self.statut.set(f"Impossible d'arrêter : {erreur}")
 
 		else:
-			self.statut.set("Aucun téléchargement en cours")
+			self.reinitialiser_choix()
+			self.statut.set("Prêt")
+
+	def reinitialiser_choix(self):
+		self.url.set("")
+		self.format_choisi.set("video")
+		self.qualite.set("720p")
+		self.actualiser_qualite()
+		self.option_playlist.set("Un élément")
+		self.changer_playlist("Un élément")
 
 	def arreter_processus(self, processus):
 		if os.name != "nt":
@@ -522,8 +570,6 @@ class YtDlpToolApp:
 
 		self.arret_demande = False
 		self.bouton_telecharger.configure(state="disabled")
-		self.bouton_arreter.configure(state="normal")
-		self.bouton_arreter.grid()
 		self.statut.set("Téléchargement en cours...")
 
 		thread = threading.Thread(
@@ -649,16 +695,9 @@ class YtDlpToolApp:
 			"Téléchargement terminé.",
 			"Téléchargement arrêté.",
 		):
-			self.url.set("")
-			self.format_choisi.set("video")
-			self.qualite.set("720p")
-			self.actualiser_qualite()
-			self.option_playlist.set("Un élément")
-			self.changer_playlist("Un élément")
+			self.reinitialiser_choix()
 
 		self.bouton_telecharger.configure(state="normal")
-		self.bouton_arreter.configure(state="disabled")
-		self.bouton_arreter.grid_remove()
 		self.processus = None
 
 

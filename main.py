@@ -3,16 +3,31 @@ import os
 import sys
 from urllib.parse import urlparse, parse_qs
 import subprocess
-from downloader import creer_commande, selection_playlist_valide
+from downloader import (
+	chemin_executable,
+	creer_commande,
+	selection_playlist_valide
+)
 
 
 # Chemins du projet
 
-DOSSIER_PROJET = os.path.dirname(
-	os.path.abspath(__file__)
-)
+if getattr(sys, "frozen", False):
+	DOSSIER_PROJET = os.path.dirname(sys.executable)
+	DOSSIER_PARAMETRES = os.path.join(
+		os.environ.get("APPDATA", os.path.expanduser("~")),
+		"yt-dlp-tool"
+	)
+else:
+	DOSSIER_PROJET = os.path.dirname(os.path.abspath(__file__))
+	DOSSIER_PARAMETRES = DOSSIER_PROJET
 
-if os.name == "nt":
+if getattr(sys, "frozen", False) and os.name == "nt":
+	DOSSIER_DEFAUT = os.path.join(
+		os.path.expanduser("~"),
+		"Downloads"
+	)
+elif os.name == "nt":
 	DOSSIER_DEFAUT = os.path.join(
 		DOSSIER_PROJET,
 		"download"
@@ -25,7 +40,7 @@ else:
 	)
 
 FICHIER_PARAMETRES = os.path.join(
-	DOSSIER_PROJET,
+	DOSSIER_PARAMETRES,
 	"settings.json"
 )
 
@@ -70,6 +85,7 @@ def enregistrer_dossier(dossier):
 	)
 
 	os.makedirs(dossier, exist_ok=True)
+	os.makedirs(DOSSIER_PARAMETRES, exist_ok=True)
 
 	with open(
 		FICHIER_PARAMETRES,
@@ -88,7 +104,10 @@ def mettre_a_jour():
 	print("\n == MISE A JOUR DE YT-DLP ==\n")
 
 	try:
-		subprocess.run(["yt-dlp", "-U"], check=False)
+		subprocess.run([
+			chemin_executable("yt-dlp"),
+			"-U"
+		], check=False)
 	except OSError as erreur:
 		print("Erreur : ", erreur)
 

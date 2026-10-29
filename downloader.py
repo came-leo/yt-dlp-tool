@@ -1,4 +1,24 @@
 import os
+import shutil
+import sys
+
+
+def chemin_executable(nom):
+	"""Trouve l'exécutable fourni avec l'application ou installé sur le système."""
+
+	if getattr(sys, "frozen", False):
+		dossier_application = os.path.dirname(sys.executable)
+		nom_windows = f"{nom}.exe" if os.name == "nt" else nom
+		chemin_inclus = os.path.join(
+			dossier_application,
+			"tools",
+			nom_windows
+		)
+
+		if os.path.isfile(chemin_inclus):
+			return chemin_inclus
+
+	return shutil.which(nom) or nom
 
 
 def selection_playlist_valide(selection):
@@ -31,12 +51,25 @@ def creer_commande(
 ):
 	# Option de base
 	commande = [
-		"yt-dlp",
+		chemin_executable("yt-dlp"),
 		"--ignore-config",
-		"--js-runtimes", "node",
 		"--newline",
 		"--progress"
 	]
+
+	chemin_ffmpeg = chemin_executable("ffmpeg")
+	if os.path.isabs(chemin_ffmpeg) and os.path.isfile(chemin_ffmpeg):
+		commande.extend([
+			"--ffmpeg-location",
+			os.path.dirname(chemin_ffmpeg)
+		])
+
+	chemin_node = chemin_executable("node")
+	if os.path.isabs(chemin_node) and os.path.isfile(chemin_node):
+		commande.extend([
+			"--js-runtimes",
+			f"node:{chemin_node}"
+		])
 
 	# Choix du format
 	if format_choisi == "mp3":
