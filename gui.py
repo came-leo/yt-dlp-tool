@@ -9,18 +9,26 @@ from tkinter import filedialog
 import customtkinter as ctk
 
 from downloader import creer_commande, selection_playlist_valide
-from main import charger_dossier, enregistrer_dossier
+from main import (
+	charger_dossier,
+	charger_theme,
+	enregistrer_dossier,
+	enregistrer_theme,
+	mettre_a_jour
+)
 
 
 class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
 		self.root.title("yt-dlp-tool")
-		self.root.geometry("880x620")
-		self.root.minsize(720, 620)
-		ctk.set_appearance_mode("light")
+		self.root.geometry("720x520")
+		self.root.minsize(680, 490)
+		self.mode_clair = charger_theme() == "light"
+		ctk.set_appearance_mode(
+			"light" if self.mode_clair else "dark"
+		)
 		ctk.set_default_color_theme("dark-blue")
-		self.mode_clair = True
 
 		self.dossier = tk.StringVar(value=charger_dossier())
 		self.url = tk.StringVar()
@@ -35,6 +43,7 @@ class YtDlpToolApp:
 		)
 		self.processus = None
 		self.arret_demande = False
+		self.mise_a_jour_en_cours = False
 
 		self.creer_interface()
 		self.root.after(100, self.champ_url.focus_set)
@@ -56,13 +65,14 @@ class YtDlpToolApp:
 		# La fenêtre sert directement de conteneur principal.
 		principal = self.root
 		principal.grid_columnconfigure(0, weight=1)
+		principal.grid_rowconfigure(2, weight=1)
 
 		entete = ctk.CTkFrame(principal, fg_color="transparent")
 		entete.grid(row=0, column=0, sticky="ew", padx=32, pady=(28, 14))
 		entete.grid_columnconfigure(0, weight=1)
-		self.bouton_theme = ctk.CTkButton(
+		self.bouton_parametres = ctk.CTkButton(
 			entete,
-			text="◐",
+			text="⚙",
 			width=36,
 			height=36,
 			corner_radius=18,
@@ -70,9 +80,9 @@ class YtDlpToolApp:
 			hover_color=("#e8e8e8", "#414141"),
 			text_color=texte,
 			font=("Segoe UI Symbol", 19),
-			command=self.basculer_theme
+			command=self.ouvrir_parametres
 		)
-		self.bouton_theme.grid(
+		self.bouton_parametres.grid(
 			row=0,
 			column=1,
 			rowspan=2,
@@ -278,42 +288,9 @@ class YtDlpToolApp:
 		)
 		self.champ_selection.grid_remove()
 
-		etiquette(contenu, "Dossier de destination", 4)
-		ligne_dossier = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_dossier.grid(
-			row=5,
-			column=0,
-			sticky="ew",
-			pady=(0, espacement_section)
-		)
-		ligne_dossier.grid_columnconfigure(0, weight=1)
-		self.champ_dossier = ctk.CTkEntry(
-			ligne_dossier,
-			textvariable=self.dossier,
-			height=46,
-			corner_radius=9,
-			border_color=bordure,
-			fg_color=fond_saisie,
-			state="readonly"
-		)
-		self.champ_dossier.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-		ctk.CTkButton(
-			ligne_dossier,
-			text="Choisir un dossier…",
-			width=150,
-			height=46,
-			corner_radius=9,
-			fg_color=fond_bouton,
-			hover_color=survol_bouton,
-			border_width=1,
-			border_color=bordure,
-			text_color=texte,
-			command=self.choisir_dossier
-		).grid(row=0, column=1)
-
 		actions = ctk.CTkFrame(contenu, fg_color="transparent")
 		actions.grid(
-			row=6,
+			row=4,
 			column=0,
 			sticky="ew",
 			pady=(0, espacement_section)
@@ -358,7 +335,7 @@ class YtDlpToolApp:
 		)
 
 		progression_entete = ctk.CTkFrame(contenu, fg_color="transparent")
-		progression_entete.grid(row=7, column=0, sticky="ew", pady=(0, 6))
+		progression_entete.grid(row=5, column=0, sticky="ew", pady=(0, 6))
 		progression_entete.grid_columnconfigure(0, weight=1)
 		ctk.CTkLabel(
 			progression_entete,
@@ -378,7 +355,7 @@ class YtDlpToolApp:
 			progress_color="#4f9e63",
 			fg_color=("#dedede", "#1d1d1d")
 		)
-		self.barre_progression.grid(row=8, column=0, sticky="ew")
+		self.barre_progression.grid(row=6, column=0, sticky="ew")
 		self.barre_progression.set(0)
 		self.infos_progression = ctk.CTkLabel(
 			contenu,
@@ -386,17 +363,224 @@ class YtDlpToolApp:
 			text_color=secondaire,
 			font=("Segoe UI", 11)
 		)
-		self.infos_progression.grid(row=9, column=0, sticky="w", pady=(6, 0))
+		self.infos_progression.grid(row=7, column=0, sticky="w", pady=(6, 0))
 
 		self.actualiser_qualite()
 		self.changer_playlist("Un élément")
+		self.entete = entete
+		self.separateur = separateur
+		self.contenu = contenu
+		self.creer_vue_parametres()
 
-	# Gestion des préférences de téléchargement
-	def basculer_theme(self):
-		self.mode_clair = not self.mode_clair
+	# Paramètres de l'application
+	def ouvrir_parametres(self):
+		self.entete.grid_remove()
+		self.separateur.grid_remove()
+		self.contenu.grid_remove()
+		self.vue_parametres.grid(
+			row=0,
+			column=0,
+			rowspan=3,
+			sticky="nsew",
+			padx=32,
+			pady=28
+		)
+
+	def retour_menu_principal(self):
+		self.vue_parametres.grid_remove()
+		self.entete.grid()
+		self.separateur.grid()
+		self.contenu.grid()
+		self.champ_url.focus_set()
+
+	def creer_vue_parametres(self):
+		self.vue_parametres = ctk.CTkFrame(
+			self.root,
+			fg_color="transparent"
+		)
+		self.vue_parametres.grid_columnconfigure(0, weight=1)
+
+		couleur_texte = ("#252525", "#f4f4f4")
+		couleur_secondaire = ("#666666", "#b8b8b8")
+		couleur_bordure = ("#d0d0d0", "#4a4a4a")
+		fond_bouton = ("#eeeeee", "#383838")
+		survol_bouton = ("#dddddd", "#454545")
+		couleur_accent = ("#C44732", "#C0503D")
+		couleur_survol = ("#B33B2B", "#A63F30")
+
+		contenu = self.vue_parametres
+
+		entete = ctk.CTkFrame(contenu, fg_color="transparent")
+		entete.grid(row=0, column=0, sticky="ew", pady=(0, 22))
+		entete.grid_columnconfigure(1, weight=1)
+		ctk.CTkButton(
+			entete,
+			text="← Retour",
+			width=110,
+			height=36,
+			fg_color=fond_bouton,
+			hover_color=survol_bouton,
+			border_width=1,
+			border_color=couleur_bordure,
+			text_color=couleur_texte,
+			command=self.retour_menu_principal
+		).grid(row=0, column=0, sticky="w", padx=(0, 18))
+		ctk.CTkLabel(
+			entete,
+			text="Paramètres",
+			text_color=couleur_texte,
+			font=("Segoe UI", 20, "bold")
+		).grid(row=0, column=1, sticky="w")
+
+		ctk.CTkLabel(
+			contenu,
+			text="Dossier de destination",
+			text_color=couleur_texte,
+			font=("Segoe UI", 13, "bold")
+		).grid(row=1, column=0, sticky="w", pady=(0, 6))
+
+		ligne_dossier = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_dossier.grid(row=2, column=0, sticky="ew", pady=(0, 20))
+		ligne_dossier.grid_columnconfigure(0, weight=1)
+		ctk.CTkEntry(
+			ligne_dossier,
+			textvariable=self.dossier,
+			height=40,
+			corner_radius=8,
+			border_color=couleur_bordure,
+			state="readonly"
+		).grid(row=0, column=0, sticky="ew", padx=(0, 8))
+		ctk.CTkButton(
+			ligne_dossier,
+			text="Choisir…",
+			width=105,
+			height=40,
+			fg_color=fond_bouton,
+			hover_color=survol_bouton,
+			border_width=1,
+			border_color=couleur_bordure,
+			text_color=couleur_texte,
+			command=self.choisir_dossier
+		).grid(row=0, column=1)
+
+		ligne_theme = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_theme.grid(row=3, column=0, sticky="w", pady=(0, 20))
+		ctk.CTkLabel(
+			ligne_theme,
+			text="Thème",
+			text_color=couleur_texte,
+			font=("Segoe UI", 13, "bold")
+		).grid(row=0, column=0, sticky="w", padx=(0, 16))
+
+		self.choix_theme = ctk.CTkSegmentedButton(
+			ligne_theme,
+			values=["Clair", "Sombre"],
+			width=200,
+			height=38,
+			dynamic_resizing=False,
+			selected_color=couleur_accent,
+			selected_hover_color=couleur_survol,
+			text_color=couleur_texte,
+			command=self.changer_theme
+		)
+		self.choix_theme.grid(row=0, column=1, sticky="w")
+		self.choix_theme.set("Clair" if self.mode_clair else "Sombre")
+
+		ligne_mise_a_jour = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_mise_a_jour.grid(row=4, column=0, sticky="w")
+		ctk.CTkLabel(
+			ligne_mise_a_jour,
+			text="Mise à jour de yt-dlp",
+			text_color=couleur_texte,
+			font=("Segoe UI", 13, "bold")
+		).grid(row=0, column=0, sticky="w", padx=(0, 16))
+
+		self.bouton_mise_a_jour = ctk.CTkButton(
+			ligne_mise_a_jour,
+			text="Mettre à jour",
+			width=180,
+			height=40,
+			fg_color=couleur_accent,
+			hover_color=couleur_survol,
+			text_color="#FFFFFF",
+			command=self.lancer_mise_a_jour
+		)
+		self.bouton_mise_a_jour.grid(row=0, column=1, sticky="w")
+		if self.mise_a_jour_en_cours:
+			self.bouton_mise_a_jour.configure(state="disabled")
+
+		self.etat_mise_a_jour = ctk.CTkLabel(
+			contenu,
+			text="",
+			text_color=couleur_secondaire,
+			wraplength=380,
+			justify="left"
+		)
+		self.etat_mise_a_jour.grid(
+			row=5,
+			column=0,
+			sticky="w",
+			pady=(8, 0)
+		)
+
+	def changer_theme(self, theme):
+		self.mode_clair = theme == "Clair"
 		ctk.set_appearance_mode(
 			"light" if self.mode_clair else "dark"
 		)
+		try:
+			enregistrer_theme(
+				"light" if self.mode_clair else "dark"
+			)
+		except OSError as erreur:
+			self.statut.set(f"Thème non enregistré : {erreur}")
+
+	def choisir_dossier(self):
+		dossier = filedialog.askdirectory(
+			parent=self.root,
+			title="Choisir le dossier de destination",
+			initialdir=self.dossier.get(),
+			mustexist=True
+		)
+
+		if dossier:
+			try:
+				dossier = enregistrer_dossier(dossier)
+				self.dossier.set(dossier)
+				self.statut.set("Dossier enregistré.")
+			except OSError as erreur:
+				self.statut.set(f"Erreur : {erreur}")
+
+	def lancer_mise_a_jour(self):
+		if self.mise_a_jour_en_cours:
+			return
+
+		self.mise_a_jour_en_cours = True
+		self.bouton_mise_a_jour.configure(state="disabled")
+		self.etat_mise_a_jour.configure(text="Mise à jour en cours…")
+		threading.Thread(
+			target=self.executer_mise_a_jour,
+			daemon=True
+		).start()
+
+	def executer_mise_a_jour(self):
+		try:
+			resultat = mettre_a_jour(attendre=False)
+			lignes = (
+				resultat.stdout + "\n" + resultat.stderr
+			).strip().splitlines()
+			message = lignes[-1] if lignes else "Mise à jour terminée."
+			if resultat.returncode != 0:
+				message = f"Échec de la mise à jour : {message}"
+		except OSError as erreur:
+			message = f"Mise à jour impossible : {erreur}"
+
+		self.root.after(0, self.afficher_resultat_mise_a_jour, message)
+
+	def afficher_resultat_mise_a_jour(self, message):
+		self.mise_a_jour_en_cours = False
+		self.bouton_mise_a_jour.configure(state="normal")
+		self.etat_mise_a_jour.configure(text=message)
 
 	def afficher_menu_url(self, evenement):
 		try:
@@ -421,20 +605,6 @@ class YtDlpToolApp:
 		}[choix]
 		self.playlist.set(valeur)
 		self.actualiser_playlist()
-
-	def choisir_dossier(self):
-		dossier = filedialog.askdirectory(
-			title="Choisir le dossier de destination",
-			mustexist=True
-		)
-
-		if dossier:
-			try:
-				dossier = enregistrer_dossier(dossier)
-				self.dossier.set(dossier)
-				self.statut.set("Dossier enregistré.")
-			except OSError as erreur:
-				self.statut.set(f"Erreur : {erreur}")
 
 	# Mise à jour des choix affichés
 	def actualiser_qualite(self):

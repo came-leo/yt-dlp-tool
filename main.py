@@ -44,74 +44,97 @@ FICHIER_PARAMETRES = os.path.join(
 	"settings.json"
 )
 
+def charger_parametres():
+	try:
+		with open(
+			FICHIER_PARAMETRES,
+			"r",
+			encoding="utf-8"
+		) as fichier:
+			parametres = json.load(fichier)
+		return parametres if isinstance(parametres, dict) else {}
+	except (OSError, json.JSONDecodeError):
+		return {}
+
+
+def enregistrer_parametres(parametres):
+	os.makedirs(DOSSIER_PARAMETRES, exist_ok=True)
+	with open(
+		FICHIER_PARAMETRES,
+		"w",
+		encoding="utf-8"
+	) as fichier:
+		json.dump(parametres, fichier, indent=4)
+
+
 def charger_dossier():
-	# Récupère le dernier dossier enregistré
-
-	if os.path.isfile(FICHIER_PARAMETRES):
-		try:
-			with open(
-				FICHIER_PARAMETRES,
-				"r",
-				encoding="utf-8"
-			) as fichier:
-				parametres = json.load(fichier)
-
-			dossier = (
-				parametres.get("dossier_telechargement")
-				if isinstance(parametres, dict)
-				else None
-			)
-
-			if isinstance(dossier, str) and dossier.strip():
-				dossier = os.path.abspath(
-					os.path.expanduser(dossier)
-				)
-
-				os.makedirs(dossier, exist_ok=True)
-				return dossier
-
-		except (OSError, json.JSONDecodeError):
-			pass
+	dossier = charger_parametres().get("dossier_telechargement")
+	if isinstance(dossier, str) and dossier.strip():
+		dossier = os.path.abspath(os.path.expanduser(dossier))
+		os.makedirs(dossier, exist_ok=True)
+		return dossier
 
 	os.makedirs(DOSSIER_DEFAUT, exist_ok=True)
 	return DOSSIER_DEFAUT
 
 
 def enregistrer_dossier(dossier):
-	# Crée le dossier et mémorise son chemin
-
 	dossier = os.path.abspath(
 		os.path.expanduser(dossier)
 	)
 
 	os.makedirs(dossier, exist_ok=True)
-	os.makedirs(DOSSIER_PARAMETRES, exist_ok=True)
-
-	with open(
-		FICHIER_PARAMETRES,
-		"w",
-		encoding="utf-8"
-	) as fichier:
-		json.dump(
-			{"dossier_telechargement": dossier},
-			fichier,
-			indent=4
-		)
+	parametres = charger_parametres()
+	parametres["dossier_telechargement"] = dossier
+	enregistrer_parametres(parametres)
 
 	return dossier
 
-def mettre_a_jour():
-	print("\n == MISE A JOUR DE YT-DLP ==\n")
+
+def charger_theme():
+	theme = charger_parametres().get("theme", "light")
+	return theme if theme in ("light", "dark") else "light"
+
+
+def enregistrer_theme(theme):
+	if theme not in ("light", "dark"):
+		raise ValueError("Thème invalide.")
+
+	parametres = charger_parametres()
+	parametres["theme"] = theme
+	enregistrer_parametres(parametres)
+
+def mettre_a_jour(attendre=True):
+	if attendre:
+		print("\n == MISE A JOUR DE YT-DLP ==\n")
 
 	try:
-		subprocess.run([
-			chemin_executable("yt-dlp"),
-			"-U"
-		], check=False)
+		resultat = subprocess.run(
+			[
+				chemin_executable("yt-dlp"),
+				"-U"
+			],
+			capture_output=True,
+			text=True,
+			encoding="utf-8",
+			errors="replace",
+			check=False
+		)
 	except OSError as erreur:
-		print("Erreur : ", erreur)
+		if not attendre:
+			raise
+		print("Erreur :", erreur)
+		input("\nAppuyez sur Entrée pour continuer...")
+		return None
 
-	input("\nAppuyez sur Entrée pour continuer...")
+	if attendre:
+		if resultat.stdout:
+			print(resultat.stdout, end="")
+		if resultat.stderr:
+			print(resultat.stderr, end="")
+		input("\nAppuyez sur Entrée pour continuer...")
+
+	return resultat
 
 def demander_url(dossier, url_partagee=None):
 	# Demande l'URL ou permet de changer de dossier
