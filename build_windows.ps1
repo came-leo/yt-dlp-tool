@@ -36,6 +36,7 @@ python -m PyInstaller `
 	--specpath build `
 	--name yt-dlp-tool `
 	--collect-all customtkinter `
+	--collect-all yt_dlp `
 	gui.py
 
 if ($LASTEXITCODE -ne 0) {

@@ -1,5 +1,6 @@
 download/
 __pycache__/
 settings.json
+historique.sqlite3
 build/
 dist/

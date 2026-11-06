@@ -108,3 +108,57 @@ def creer_commande(
 	])
 
 	return commande
+
+
+def creer_options_api(
+	format_choisi,
+	qualite,
+	playlist,
+	selection,
+	dossier,
+	progress_hook,
+	post_hook,
+):
+	"""Prépare les options yt-dlp pour le téléchargement depuis l'interface."""
+	options = {
+		"ignoreconfig": True,
+		"quiet": True,
+		"no_warnings": True,
+		"outtmpl": os.path.join(
+			dossier,
+			"%(title).80s.%(ext)s"
+			if format_choisi == "mp3"
+			else "%(title).80s_%(height)sp.%(ext)s",
+		),
+		"progress_hooks": [progress_hook],
+		"post_hooks": [post_hook],
+	}
+
+	chemin_ffmpeg = chemin_executable("ffmpeg")
+	if os.path.isabs(chemin_ffmpeg) and os.path.isfile(chemin_ffmpeg):
+		options["ffmpeg_location"] = os.path.dirname(chemin_ffmpeg)
+
+	chemin_node = chemin_executable("node")
+	if os.path.isabs(chemin_node) and os.path.isfile(chemin_node):
+		options["js_runtimes"] = {"node": {"path": chemin_node}}
+
+	if format_choisi == "mp3":
+		options["format"] = "bestaudio/best"
+		options["postprocessors"] = [{
+			"key": "FFmpegExtractAudio",
+			"preferredcodec": "mp3",
+		}]
+	else:
+		limite = qualite if format_choisi == "qualite" else 720
+		options["format"] = (
+			f"bestvideo[height<=?{limite}]+bestaudio/"
+			f"best[height<=?{limite}]/best"
+		)
+		options["merge_output_format"] = "mp4"
+
+	if playlist == "unique":
+		options["noplaylist"] = True
+	elif playlist == "custom":
+		options["playlist_items"] = selection
+
+	return options

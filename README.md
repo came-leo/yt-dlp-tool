@@ -41,6 +41,7 @@ python main.py
 - Extraction audio au format MP3.
 - Téléchargement de playlists complètes ou sélection de vidéos.
 - Modification du dossier de destination.
+- Historique des fichiers téléchargés, avec leur taille réelle et leur dossier.
 
 ## 4. Utilisation
 
@@ -59,6 +60,8 @@ Dans l'interface en terminal, les options de playlist sont proposées lorsque l'
 ## 5. Destination des fichiers
 
 Les fichiers sont enregistrés dans le dossier de téléchargement configuré dans `settings.json`.
+L'historique conserve les informations des téléchargements terminés dans `historique.sqlite3`.
+Effacer une entrée de l'historique ne supprime pas le fichier téléchargé.
 
 ## 6. Limites
 
