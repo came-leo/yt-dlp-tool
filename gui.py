@@ -41,6 +41,7 @@ class YtDlpToolApp:
 		self.details_progression = tk.StringVar(
 			value="En attente d'un téléchargement"
 		)
+		self.pourcentage_progression = tk.StringVar()
 		self.processus = None
 		self.arret_demande = False
 		self.mise_a_jour_en_cours = False
@@ -357,13 +358,30 @@ class YtDlpToolApp:
 		)
 		self.barre_progression.grid(row=6, column=0, sticky="ew")
 		self.barre_progression.set(0)
-		self.infos_progression = ctk.CTkLabel(
+		ligne_infos_progression = ctk.CTkFrame(
 			contenu,
+			fg_color="transparent"
+		)
+		ligne_infos_progression.grid(
+			row=7,
+			column=0,
+			sticky="ew",
+			pady=(6, 0)
+		)
+		ligne_infos_progression.grid_columnconfigure(0, weight=1)
+		self.infos_progression = ctk.CTkLabel(
+			ligne_infos_progression,
 			textvariable=self.details_progression,
 			text_color=secondaire,
 			font=("Segoe UI", 11)
 		)
-		self.infos_progression.grid(row=7, column=0, sticky="w", pady=(6, 0))
+		self.infos_progression.grid(row=0, column=0, sticky="w")
+		ctk.CTkLabel(
+			ligne_infos_progression,
+			textvariable=self.pourcentage_progression,
+			text_color=secondaire,
+			font=("Segoe UI", 11)
+		).grid(row=0, column=1, sticky="e")
 
 		self.actualiser_qualite()
 		self.changer_playlist("Un élément")
@@ -411,7 +429,7 @@ class YtDlpToolApp:
 		contenu = self.vue_parametres
 
 		entete = ctk.CTkFrame(contenu, fg_color="transparent")
-		entete.grid(row=0, column=0, sticky="ew", pady=(0, 22))
+		entete.grid(row=0, column=0, sticky="ew", pady=(0, 18))
 		entete.grid_columnconfigure(1, weight=1)
 		ctk.CTkButton(
 			entete,
@@ -440,7 +458,7 @@ class YtDlpToolApp:
 		).grid(row=1, column=0, sticky="w", pady=(0, 6))
 
 		ligne_dossier = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_dossier.grid(row=2, column=0, sticky="ew", pady=(0, 20))
+		ligne_dossier.grid(row=2, column=0, sticky="ew", pady=(0, 18))
 		ligne_dossier.grid_columnconfigure(0, weight=1)
 		ctk.CTkEntry(
 			ligne_dossier,
@@ -449,7 +467,7 @@ class YtDlpToolApp:
 			corner_radius=8,
 			border_color=couleur_bordure,
 			state="readonly"
-		).grid(row=0, column=0, sticky="ew", padx=(0, 8))
+		).grid(row=0, column=0, sticky="ew", padx=(0, 12))
 		ctk.CTkButton(
 			ligne_dossier,
 			text="Choisir…",
@@ -464,13 +482,13 @@ class YtDlpToolApp:
 		).grid(row=0, column=1)
 
 		ligne_theme = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_theme.grid(row=3, column=0, sticky="w", pady=(0, 20))
+		ligne_theme.grid(row=3, column=0, sticky="w", pady=(0, 18))
 		ctk.CTkLabel(
 			ligne_theme,
 			text="Thème",
 			text_color=couleur_texte,
 			font=("Segoe UI", 13, "bold")
-		).grid(row=0, column=0, sticky="w", padx=(0, 16))
+		).grid(row=0, column=0, sticky="w", padx=(0, 12))
 
 		self.choix_theme = ctk.CTkSegmentedButton(
 			ligne_theme,
@@ -488,24 +506,18 @@ class YtDlpToolApp:
 
 		ligne_mise_a_jour = ctk.CTkFrame(contenu, fg_color="transparent")
 		ligne_mise_a_jour.grid(row=4, column=0, sticky="w")
-		ctk.CTkLabel(
-			ligne_mise_a_jour,
-			text="Mise à jour de yt-dlp",
-			text_color=couleur_texte,
-			font=("Segoe UI", 13, "bold")
-		).grid(row=0, column=0, sticky="w", padx=(0, 16))
-
 		self.bouton_mise_a_jour = ctk.CTkButton(
 			ligne_mise_a_jour,
-			text="Mettre à jour",
-			width=180,
-			height=40,
-			fg_color=couleur_accent,
-			hover_color=couleur_survol,
-			text_color="#FFFFFF",
+			text="Mise à jour de yt-dlp",
+			width=0,
+			height=32,
+			fg_color="transparent",
+			hover_color=fond_bouton,
+			text_color=couleur_texte,
+			font=("Segoe UI", 13, "bold"),
 			command=self.lancer_mise_a_jour
 		)
-		self.bouton_mise_a_jour.grid(row=0, column=1, sticky="w")
+		self.bouton_mise_a_jour.grid(row=0, column=0, sticky="w")
 		if self.mise_a_jour_en_cours:
 			self.bouton_mise_a_jour.configure(state="disabled")
 
@@ -708,6 +720,7 @@ class YtDlpToolApp:
 
 		playlist = self.playlist.get()
 		selection = None
+		positions_playlist = []
 
 		if playlist == "custom":
 			selection = self.selection_playlist.get().strip()
@@ -718,6 +731,12 @@ class YtDlpToolApp:
 				)
 				self.champ_selection.focus_set()
 				return
+
+			for element in selection.split(","):
+				bornes = [int(borne) for borne in element.strip().split("-")]
+				debut = bornes[0]
+				fin = bornes[-1]
+				positions_playlist.extend(range(debut, fin + 1))
 
 		commande = creer_commande(
 			url,
@@ -734,7 +753,9 @@ class YtDlpToolApp:
 				"download:%(progress._percent_str)s|"
 				"%(progress._total_bytes_str)s|"
 				"%(progress._speed_str)s|"
-				"%(progress._eta_str)s"
+				"%(progress._eta_str)s|"
+				"%(info.playlist_index)s|"
+				"%(info.playlist_count)s"
 			),
 		]
 
@@ -744,14 +765,23 @@ class YtDlpToolApp:
 
 		thread = threading.Thread(
 			target=self.executer_telechargement,
-			args=(commande,),
+			args=(
+				commande,
+				positions_playlist,
+				playlist == "unique"
+			),
 			daemon=True
 		)
 		thread.start()
 
-	def executer_telechargement(self, commande):
+	def executer_telechargement(
+		self,
+		commande,
+		positions_playlist,
+		element_unique
+	):
+		detail_erreur = None
 		try:
-			detail_erreur = None
 			self.processus = subprocess.Popen(
 				commande,
 				stdout=subprocess.PIPE,
@@ -766,11 +796,12 @@ class YtDlpToolApp:
 				self.arreter_processus(self.processus)
 
 			for ligne in self.processus.stdout:
+				ligne = ligne.strip()
 				if "[error]" in ligne.lower() or "error:" in ligne.lower():
-					detail_erreur = ligne.strip()
+					detail_erreur = ligne
 
-				valeurs = ligne.strip().split("|", 3)
-				if len(valeurs) == 4:
+				valeurs = ligne.split("|", 5)
+				if len(valeurs) == 6:
 					try:
 						pourcentage = float(
 							valeurs[0].replace("%", "").strip()
@@ -782,12 +813,34 @@ class YtDlpToolApp:
 						f"of {valeurs[1]} at {valeurs[2]} "
 						f"ETA {valeurs[3]}"
 					)
+					position_playlist = valeurs[4].strip()
+					total_playlist = valeurs[5].strip()
+					if element_unique:
+						position_playlist = "1"
+						total_playlist = "1"
+					elif (
+						positions_playlist
+						and position_playlist.isdigit()
+					):
+						try:
+							position_playlist = str(
+								positions_playlist.index(
+									int(position_playlist)
+								) + 1
+							)
+							total_playlist = str(
+								len(positions_playlist)
+							)
+						except ValueError:
+							pass
 
 					self.root.after(
 						0,
 						self.actualiser_progression,
 						pourcentage,
-						details
+						details,
+						position_playlist,
+						total_playlist
 					)
 
 			code_retour = self.processus.wait()
@@ -820,12 +873,23 @@ class YtDlpToolApp:
 		)
 
 	# Affichage de l'avancement et du résultat
-	def actualiser_progression(self, pourcentage, details):
+	def actualiser_progression(
+		self,
+		pourcentage,
+		details,
+		position_playlist="",
+		total_playlist=""
+	):
 		self.barre_progression.set(pourcentage / 100)
-		self.details_progression.set(
-			f"Progression : {pourcentage:.0f} %"
-		)
-
+		self.pourcentage_progression.set(f"{pourcentage:.0f} %")
+		compteur_playlist = ""
+		if (
+			position_playlist.isdigit()
+			and total_playlist.isdigit()
+		):
+			compteur_playlist = (
+				f"{position_playlist}/{total_playlist}    "
+			)
 		taille = re.search(
 			r"of\s+~?\s*([\d.]+\s*[KMGTP]?i?B)",
 			details
@@ -848,11 +912,9 @@ class YtDlpToolApp:
 			indicateurs.append(f"Vitesse : {vitesse.group(1)}")
 		if temps:
 			indicateurs.append(f"Temps restant : {temps.group(1)}")
-		if indicateurs:
-			self.details_progression.set(
-				f"{pourcentage:.0f} %    "
-				+ "    ".join(indicateurs)
-			)
+		self.details_progression.set(
+			compteur_playlist + "    ".join(indicateurs)
+		)
 
 	def terminer_telechargement(self, message):
 		reussi = message == "Téléchargement terminé."
