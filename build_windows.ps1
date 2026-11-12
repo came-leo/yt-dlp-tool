@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = $PSScriptRoot
 $vendorDirectory = Join-Path $projectRoot "build\vendor"
-$applicationDirectory = Join-Path $projectRoot "dist\yt-dlp-tool"
+$applicationDirectory = Join-Path $projectRoot "dist\easydownload"
 $toolsDirectory = Join-Path $applicationDirectory "tools"
 
 Set-Location -LiteralPath $projectRoot
@@ -34,7 +34,7 @@ python -m PyInstaller `
 	--onedir `
 	--windowed `
 	--specpath build `
-	--name yt-dlp-tool `
+	--name easydownload `
 	--collect-all customtkinter `
 	--collect-all yt_dlp `
 	gui.py
@@ -60,7 +60,7 @@ if ($ffmpegVersion -match "git-([0-9a-fA-F]+)") {
 }
 
 $notices = @"
-YT-DLP-TOOL - THIRD-PARTY NOTICES
+EASYDOWNLOAD - THIRD-PARTY NOTICES
 
 yt-dlp
 Version: $ytDlpVersion
@@ -80,4 +80,4 @@ Set-Content -LiteralPath (Join-Path $applicationDirectory "THIRD_PARTY_NOTICES.t
 	-Value $notices -Encoding utf8
 
 Write-Host "Ready-to-run folder: $applicationDirectory"
-Write-Host "Executable: $(Join-Path $applicationDirectory 'yt-dlp-tool.exe')"
+Write-Host "Executable: $(Join-Path $applicationDirectory 'easydownload.exe')"

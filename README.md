@@ -1,4 +1,4 @@
-# YT-DLP-TOOL
+# EasyDownload
 
 Outil Python interactif pour télécharger des vidéos, audios et playlists YouTube, TikTok, Facebook et autre
 sous Windows, Linux et Android (via Termux) grace à yt-dlp
@@ -81,7 +81,7 @@ Vérifier que `yt-dlp.exe`, `ffmpeg.exe` et `ffprobe.exe` sont accessibles depui
 powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
 ```
 
-Le dossier créé est `dist\yt-dlp-tool`. Lancer `yt-dlp-tool.exe` à l'intérieur. Le paquet inclut yt-dlp et FFmpeg ; Node.js reste une installation séparée.
+Le dossier créé est `dist\easydownload`. Lancer `easydownload.exe` à l'intérieur. Le paquet inclut yt-dlp et FFmpeg ; Node.js reste une installation séparée.
 
-**Projet :** `yt-dlp-tool`  
+**Projet :** `easydownload`
 **Technologie principale :** Python et yt-dlp

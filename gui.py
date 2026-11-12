@@ -23,10 +23,13 @@ from main import (
 class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
-		self.root.title("yt-dlp-tool")
-		self.root.geometry("800x640")
-		self.root.minsize(740, 580)
+		self.root.title("EasyDownload")
+		self.root.geometry("664x640")
+		self.root.minsize(664, 580)
 		self.mode_clair = charger_theme() == "light"
+		self.theme_choisi = tk.StringVar(
+			value="Clair" if self.mode_clair else "Sombre"
+		)
 		ctk.set_appearance_mode(
 			"light" if self.mode_clair else "dark"
 		)
@@ -52,6 +55,9 @@ class YtDlpToolApp:
 
 	# Construction de l'interface
 	def creer_interface(self):
+		self.marge_horizontale = 32
+		self.marge_verticale = 28
+		self.espacement_section = 16
 		carte = ("#ffffff", "#2d2d2d")
 		fond_saisie = ("#ffffff", "#2d2d2d")
 		fond_bouton = ("#eeeeee", "#383838")
@@ -61,27 +67,46 @@ class YtDlpToolApp:
 		secondaire = ("#666666", "#b8b8b8")
 		accent = ("#C44732", "#C0503D")
 		survol_accent = ("#B33B2B", "#A63F30")
-		espacement_section = 16
 		self.root.configure(fg_color=carte)
 		self.root.grid_columnconfigure(0, weight=1)
 		self.root.grid_rowconfigure(1, weight=1)
 		self.couleur_accent_onglet = accent
-		self.couleur_survol_onglet = survol_accent
 		self.couleur_texte_onglet = texte
+		self.couleur_secondaire_onglet = secondaire
 		self.boutons_onglets = {}
+		self.indicateurs_onglets = {}
 		barre_onglets = ctk.CTkFrame(self.root, fg_color="transparent")
-		barre_onglets.grid(row=0, column=0, sticky="ew", padx=32, pady=(18, 8))
+		barre_onglets.grid(
+			row=0,
+			column=0,
+			sticky="ew",
+			padx=self.marge_horizontale,
+			pady=(18, 8)
+		)
 		for colonne, nom in enumerate(("Accueil", "Historique", "Paramètres")):
 			bouton = ctk.CTkButton(
 				barre_onglets,
 				text=nom,
 				width=110,
 				height=36,
-				corner_radius=8,
+				corner_radius=6,
+				fg_color="transparent",
+				hover_color=("#eeeeee", "#3a3a3a"),
+				text_color=texte,
+				font=("Segoe UI", 12),
 				command=lambda onglet=nom: self.selectionner_onglet(onglet)
 			)
-			bouton.grid(row=0, column=colonne, padx=(0, 12))
+			bouton.grid(row=0, column=colonne, padx=(0, 12), pady=(0, 2))
 			self.boutons_onglets[nom] = bouton
+			indicateur = ctk.CTkFrame(
+				barre_onglets,
+				width=110,
+				height=2,
+				corner_radius=1,
+				fg_color="transparent"
+			)
+			indicateur.grid(row=1, column=colonne, sticky="ew", padx=(0, 12))
+			self.indicateurs_onglets[nom] = indicateur
 
 		self.conteneur_onglets = ctk.CTkFrame(
 			self.root,
@@ -103,11 +128,17 @@ class YtDlpToolApp:
 		principal.grid_rowconfigure(2, weight=1)
 
 		entete = ctk.CTkFrame(principal, fg_color="transparent")
-		entete.grid(row=0, column=0, sticky="ew", padx=32, pady=(28, 14))
+		entete.grid(
+			row=0,
+			column=0,
+			sticky="ew",
+			padx=self.marge_horizontale,
+			pady=(self.marge_verticale, self.espacement_section)
+		)
 		entete.grid_columnconfigure(0, weight=1)
 		ctk.CTkLabel(
 			entete,
-			text="yt-dlp-tool",
+			text="EasyDownload",
 			text_color=texte,
 			font=("Segoe UI", 21, "bold")
 		).grid(row=0, column=0, sticky="sw")
@@ -123,10 +154,22 @@ class YtDlpToolApp:
 			height=1,
 			fg_color=("#d8d8d8", "#414141")
 		)
-		separateur.grid(row=1, column=0, sticky="ew", padx=32, pady=(0, 20))
+		separateur.grid(
+			row=1,
+			column=0,
+			sticky="ew",
+			padx=self.marge_horizontale,
+			pady=(0, self.espacement_section)
+		)
 
 		contenu = ctk.CTkFrame(principal, fg_color="transparent")
-		contenu.grid(row=2, column=0, sticky="nsew", padx=32, pady=(0, 28))
+		contenu.grid(
+			row=2,
+			column=0,
+			sticky="nsew",
+			padx=self.marge_horizontale,
+			pady=(0, self.marge_verticale)
+		)
 		contenu.grid_columnconfigure(0, weight=1)
 
 		def etiquette(parent, titre, row, pady=(0, 6), column=0):
@@ -146,6 +189,7 @@ class YtDlpToolApp:
 		self.champ_url = ctk.CTkEntry(
 			contenu,
 			textvariable=self.url,
+			width=600,
 			height=46,
 			corner_radius=9,
 			border_color=bordure,
@@ -155,8 +199,8 @@ class YtDlpToolApp:
 		self.champ_url.grid(
 			row=1,
 			column=0,
-			sticky="ew",
-			pady=(0, espacement_section)
+			sticky="w",
+			pady=(0, self.espacement_section)
 		)
 		self.menu_url = tk.Menu(self.root, tearoff=False)
 		self.menu_url.add_command(
@@ -186,7 +230,7 @@ class YtDlpToolApp:
 			row=2,
 			column=0,
 			sticky="ew",
-			pady=(0, espacement_section)
+			pady=(0, self.espacement_section)
 		)
 		self.radio_video = ctk.CTkRadioButton(
 			formats,
@@ -234,7 +278,7 @@ class YtDlpToolApp:
 			row=3,
 			column=0,
 			sticky="ew",
-			pady=(0, espacement_section)
+			pady=(0, self.espacement_section)
 		)
 		self.ligne_options = ligne_options
 		ligne_options.grid_columnconfigure(0, weight=0)
@@ -343,7 +387,7 @@ class YtDlpToolApp:
 			row=4,
 			column=0,
 			sticky="ew",
-			pady=(0, espacement_section)
+			pady=(0, self.espacement_section)
 		)
 		actions.grid_columnconfigure(0, weight=0)
 		actions.grid_columnconfigure(1, weight=0)
@@ -443,16 +487,22 @@ class YtDlpToolApp:
 			if titre == nom:
 				page.grid()
 				self.boutons_onglets[titre].configure(
-					fg_color=self.couleur_accent_onglet,
-					hover_color=self.couleur_survol_onglet,
-					text_color="#ffffff"
+					fg_color="transparent",
+					text_color=self.couleur_texte_onglet,
+					font=("Segoe UI", 12, "bold")
+				)
+				self.indicateurs_onglets[titre].configure(
+					fg_color=self.couleur_accent_onglet
 				)
 			else:
 				page.grid_remove()
 				self.boutons_onglets[titre].configure(
 					fg_color="transparent",
-					hover_color=("#eeeeee", "#3a3a3a"),
-					text_color=self.couleur_texte_onglet
+					text_color=self.couleur_secondaire_onglet,
+					font=("Segoe UI", 12)
+				)
+				self.indicateurs_onglets[titre].configure(
+					fg_color="transparent"
 				)
 
 	# Paramètres de l'application
@@ -466,18 +516,27 @@ class YtDlpToolApp:
 		couleur_bordure = ("#d0d0d0", "#4a4a4a")
 		fond_bouton = ("#eeeeee", "#383838")
 		survol_bouton = ("#dddddd", "#454545")
-		couleur_accent = ("#C44732", "#C0503D")
-		couleur_survol = ("#B33B2B", "#A63F30")
 
 		contenu = ctk.CTkFrame(
 			self.vue_parametres,
 			fg_color="transparent"
 		)
-		contenu.grid(row=0, column=0, sticky="nsew", padx=32, pady=28)
+		contenu.grid(
+			row=0,
+			column=0,
+			sticky="nsew",
+			padx=self.marge_horizontale,
+			pady=self.marge_verticale
+		)
 		contenu.grid_columnconfigure(0, weight=1)
 
 		entete = ctk.CTkFrame(contenu, fg_color="transparent")
-		entete.grid(row=0, column=0, sticky="ew", pady=(0, 18))
+		entete.grid(
+			row=0,
+			column=0,
+			sticky="ew",
+			pady=(0, self.espacement_section)
+		)
 		ctk.CTkLabel(
 			entete,
 			text="Paramètres",
@@ -493,16 +552,22 @@ class YtDlpToolApp:
 		).grid(row=1, column=0, sticky="w", pady=(0, 6))
 
 		ligne_dossier = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_dossier.grid(row=2, column=0, sticky="ew", pady=(0, 18))
-		ligne_dossier.grid_columnconfigure(0, weight=1)
+		ligne_dossier.grid(
+			row=2,
+			column=0,
+			sticky="ew",
+			pady=(0, self.espacement_section)
+		)
+		ligne_dossier.grid_columnconfigure(0, weight=0)
 		ctk.CTkEntry(
 			ligne_dossier,
 			textvariable=self.dossier,
+			width=460,
 			height=40,
 			corner_radius=8,
 			border_color=couleur_bordure,
 			state="readonly"
-		).grid(row=0, column=0, sticky="ew", padx=(0, 12))
+		).grid(row=0, column=0, sticky="w", padx=(0, 12))
 		ctk.CTkButton(
 			ligne_dossier,
 			text="Choisir…",
@@ -517,7 +582,12 @@ class YtDlpToolApp:
 		).grid(row=0, column=1)
 
 		ligne_theme = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_theme.grid(row=3, column=0, sticky="w", pady=(0, 18))
+		ligne_theme.grid(
+			row=3,
+			column=0,
+			sticky="w",
+			pady=(0, self.espacement_section)
+		)
 		ctk.CTkLabel(
 			ligne_theme,
 			text="Thème",
@@ -525,30 +595,36 @@ class YtDlpToolApp:
 			font=("Segoe UI", 13, "bold")
 		).grid(row=0, column=0, sticky="w", padx=(0, 12))
 
-		self.choix_theme = ctk.CTkSegmentedButton(
+		self.choix_theme = ctk.CTkComboBox(
 			ligne_theme,
 			values=["Clair", "Sombre"],
-			width=200,
+			variable=self.theme_choisi,
+			width=150,
 			height=38,
-			dynamic_resizing=False,
-			selected_color=couleur_accent,
-			selected_hover_color=couleur_survol,
+			corner_radius=8,
+			border_color=couleur_bordure,
+			fg_color=("#ffffff", "#2d2d2d"),
+			button_color=("#e5e5e5", "#414141"),
+			button_hover_color=("#d6d6d6", "#4b4b4b"),
+			dropdown_fg_color=("#ffffff", "#343434"),
+			dropdown_hover_color=("#e8e8e8", "#414141"),
+			dropdown_text_color=couleur_texte,
 			text_color=couleur_texte,
 			command=self.changer_theme
 		)
 		self.choix_theme.grid(row=0, column=1, sticky="w")
-		self.choix_theme.set("Clair" if self.mode_clair else "Sombre")
 
 		ligne_mise_a_jour = ctk.CTkFrame(contenu, fg_color="transparent")
 		ligne_mise_a_jour.grid(row=4, column=0, sticky="w")
 		self.bouton_mise_a_jour = ctk.CTkButton(
 			ligne_mise_a_jour,
 			text="Mise à jour de yt-dlp",
-			width=180,
+			width=0,
 			height=32,
 			fg_color="transparent",
 			hover_color=fond_bouton,
 			text_color=couleur_texte,
+			anchor="w",
 			font=("Segoe UI", 13, "bold"),
 			command=self.lancer_mise_a_jour
 		)
@@ -576,11 +652,22 @@ class YtDlpToolApp:
 		self.vue_historique.grid_columnconfigure(0, weight=1)
 		self.vue_historique.grid_rowconfigure(0, weight=1)
 		contenu = ctk.CTkFrame(self.vue_historique, fg_color="transparent")
-		contenu.grid(row=0, column=0, sticky="nsew", padx=32, pady=28)
+		contenu.grid(
+			row=0,
+			column=0,
+			sticky="nsew",
+			padx=self.marge_horizontale,
+			pady=self.marge_verticale
+		)
 		contenu.grid_columnconfigure(0, weight=1)
 		contenu.grid_rowconfigure(1, weight=1)
 		entete = ctk.CTkFrame(contenu, fg_color="transparent")
-		entete.grid(row=0, column=0, sticky="ew", pady=(0, 16))
+		entete.grid(
+			row=0,
+			column=0,
+			sticky="ew",
+			pady=(0, self.espacement_section)
+		)
 		entete.grid_columnconfigure(1, weight=1)
 		ctk.CTkLabel(
 			entete,

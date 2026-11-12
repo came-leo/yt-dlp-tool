@@ -14,10 +14,20 @@ from downloader import (
 
 if getattr(sys, "frozen", False):
 	DOSSIER_PROJET = os.path.dirname(sys.executable)
-	DOSSIER_PARAMETRES = os.path.join(
-		os.environ.get("APPDATA", os.path.expanduser("~")),
+	DOSSIER_APPDATA = os.environ.get("APPDATA", os.path.expanduser("~"))
+	DOSSIER_PARAMETRES = os.path.join(DOSSIER_APPDATA, "easydownload")
+	ANCIEN_DOSSIER_PARAMETRES = os.path.join(
+		DOSSIER_APPDATA,
 		"yt-dlp-tool"
 	)
+	if (
+		not os.path.exists(DOSSIER_PARAMETRES)
+		and os.path.isdir(ANCIEN_DOSSIER_PARAMETRES)
+	):
+		try:
+			os.rename(ANCIEN_DOSSIER_PARAMETRES, DOSSIER_PARAMETRES)
+		except OSError:
+			DOSSIER_PARAMETRES = ANCIEN_DOSSIER_PARAMETRES
 else:
 	DOSSIER_PROJET = os.path.dirname(os.path.abspath(__file__))
 	DOSSIER_PARAMETRES = DOSSIER_PROJET
@@ -144,7 +154,7 @@ def demander_url(dossier, url_partagee=None):
 		# Nettoie le terminal
 		os.system("cls" if os.name == "nt" else "clear")
 
-		print("YT-DLP-TOOL")
+		print("EasyDownload")
 		print()
 		print(f"Téléchargement : {dossier}")
 		print()
