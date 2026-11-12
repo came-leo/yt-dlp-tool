@@ -13,8 +13,10 @@ from downloader import creer_options_api, selection_playlist_valide
 import historique
 from main import (
 	charger_dossier,
+	charger_qualite_defaut,
 	charger_theme,
 	enregistrer_dossier,
+	enregistrer_qualite_defaut,
 	enregistrer_theme,
 	mettre_a_jour
 )
@@ -24,8 +26,8 @@ class YtDlpToolApp:
 	def __init__(self, root):
 		self.root = root
 		self.root.title("EasyDownload")
-		self.root.geometry("664x640")
-		self.root.minsize(664, 580)
+		self.root.geometry("664x680")
+		self.root.minsize(664, 620)
 		self.mode_clair = charger_theme() == "light"
 		self.theme_choisi = tk.StringVar(
 			value="Clair" if self.mode_clair else "Sombre"
@@ -36,16 +38,18 @@ class YtDlpToolApp:
 		ctk.set_default_color_theme("dark-blue")
 
 		self.dossier = tk.StringVar(value=charger_dossier())
+		self.qualite_defaut = tk.StringVar(value=charger_qualite_defaut())
 		self.url = tk.StringVar()
 		self.format_choisi = tk.StringVar(value="video")
-		self.qualite = tk.StringVar(value="720p")
+		self.qualite = tk.StringVar(value=self.qualite_defaut.get())
 		self.playlist = tk.StringVar(value="unique")
 		self.option_playlist = tk.StringVar(value="Un élément")
 		self.selection_playlist = tk.StringVar()
 		self.statut = tk.StringVar(value="Prêt")
-		self.details_progression = tk.StringVar(
-			value="En attente d'un téléchargement"
-		)
+		self.compteur_progression = tk.StringVar()
+		self.details_progression = tk.StringVar(value="—")
+		self.taille_progression = tk.StringVar()
+		self.vitesse_progression = tk.StringVar()
 		self.pourcentage_progression = tk.StringVar()
 		self.arret_demande = False
 		self.mise_a_jour_en_cours = False
@@ -58,7 +62,7 @@ class YtDlpToolApp:
 		self.marge_horizontale = 32
 		self.marge_verticale = 28
 		self.espacement_section = 16
-		carte = ("#ffffff", "#2d2d2d")
+		carte = ("#f7f7f8", "#2d2d2d")
 		fond_saisie = ("#ffffff", "#2d2d2d")
 		fond_bouton = ("#eeeeee", "#383838")
 		survol_bouton = ("#dddddd", "#454545")
@@ -96,13 +100,13 @@ class YtDlpToolApp:
 				font=("Segoe UI", 12),
 				command=lambda onglet=nom: self.selectionner_onglet(onglet)
 			)
-			bouton.grid(row=0, column=colonne, padx=(0, 12), pady=(0, 2))
+			bouton.grid(row=0, column=colonne, padx=(0, 12))
 			self.boutons_onglets[nom] = bouton
 			indicateur = ctk.CTkFrame(
 				barre_onglets,
 				width=110,
-				height=2,
-				corner_radius=1,
+				height=3,
+				corner_radius=0,
 				fg_color="transparent"
 			)
 			indicateur.grid(row=1, column=colonne, sticky="ew", padx=(0, 12))
@@ -133,7 +137,7 @@ class YtDlpToolApp:
 			column=0,
 			sticky="ew",
 			padx=self.marge_horizontale,
-			pady=(self.marge_verticale, self.espacement_section)
+			pady=(18, self.espacement_section)
 		)
 		entete.grid_columnconfigure(0, weight=1)
 		ctk.CTkLabel(
@@ -144,7 +148,7 @@ class YtDlpToolApp:
 		).grid(row=0, column=0, sticky="sw")
 		ctk.CTkLabel(
 			entete,
-			text="Téléchargeur multimédia",
+			text="Télécharger facilement des vidéos ou de l’audio",
 			text_color=secondaire,
 			font=("Segoe UI", 12)
 		).grid(row=1, column=0, sticky="nw")
@@ -159,7 +163,7 @@ class YtDlpToolApp:
 			column=0,
 			sticky="ew",
 			padx=self.marge_horizontale,
-			pady=(0, self.espacement_section)
+			pady=(0, self.espacement_section - 6)
 		)
 
 		contenu = ctk.CTkFrame(principal, fg_color="transparent")
@@ -185,7 +189,7 @@ class YtDlpToolApp:
 				pady=pady
 			)
 
-		etiquette(contenu, "URL de la vidéo ou de la playlist", 0)
+		etiquette(contenu, "URL", 0)
 		self.champ_url = ctk.CTkEntry(
 			contenu,
 			textvariable=self.url,
@@ -281,8 +285,8 @@ class YtDlpToolApp:
 			pady=(0, self.espacement_section)
 		)
 		self.ligne_options = ligne_options
-		ligne_options.grid_columnconfigure(0, weight=0)
-		ligne_options.grid_columnconfigure(1, weight=0)
+		ligne_options.grid_columnconfigure(0, weight=1)
+		ligne_options.grid_columnconfigure(1, weight=1)
 		ligne_options.grid_columnconfigure(2, weight=0)
 		ctk.CTkLabel(
 			ligne_options,
@@ -301,11 +305,12 @@ class YtDlpToolApp:
 			ligne_options,
 			values=["480p", "720p", "1080p", "2K", "4K"],
 			variable=self.qualite,
-			width=130,
+			width=200,
 			height=38,
 			corner_radius=8,
 			border_color=bordure,
 			fg_color=fond_saisie,
+			state="readonly",
 			button_color=("#e5e5e5", "#414141"),
 			button_hover_color=("#d6d6d6", "#4b4b4b"),
 			dropdown_fg_color=("#ffffff", "#343434"),
@@ -327,11 +332,12 @@ class YtDlpToolApp:
 				"Sélection personnalisée",
 			],
 			variable=self.option_playlist,
-			width=155,
+			width=200,
 			height=38,
 			corner_radius=8,
 			border_color=bordure,
 			fg_color=fond_saisie,
+			state="readonly",
 			button_color=("#e5e5e5", "#414141"),
 			button_hover_color=("#d6d6d6", "#4b4b4b"),
 			dropdown_fg_color=("#ffffff", "#343434"),
@@ -350,7 +356,7 @@ class YtDlpToolApp:
 		self.zone_selection = ctk.CTkFrame(
 			ligne_options,
 			fg_color="transparent",
-			width=180
+			width=200
 		)
 		self.zone_selection.grid(
 			row=0,
@@ -387,10 +393,10 @@ class YtDlpToolApp:
 			row=4,
 			column=0,
 			sticky="ew",
-			pady=(0, self.espacement_section)
+			pady=(6, self.espacement_section)
 		)
-		actions.grid_columnconfigure(0, weight=0)
-		actions.grid_columnconfigure(1, weight=0)
+		actions.grid_columnconfigure(0, weight=1)
+		actions.grid_columnconfigure(1, weight=2)
 		self.bouton_telecharger = ctk.CTkButton(
 			actions,
 			text="Télécharger",
@@ -430,29 +436,40 @@ class YtDlpToolApp:
 			padx=(0, 8)
 		)
 
-		progression_entete = ctk.CTkFrame(contenu, fg_color="transparent")
-		progression_entete.grid(row=5, column=0, sticky="ew", pady=(0, 6))
-		progression_entete.grid_columnconfigure(0, weight=1)
-		ctk.CTkLabel(
-			progression_entete,
-			text="Progression",
-			text_color=texte,
-			font=("Segoe UI", 13, "bold")
-		).grid(row=0, column=0, sticky="w")
-		ctk.CTkLabel(
-			progression_entete,
-			textvariable=self.statut,
-			text_color=secondaire
-		).grid(row=0, column=1, sticky="e")
-		self.barre_progression = ctk.CTkProgressBar(
+		espace_avant_progression = ctk.CTkFrame(
 			contenu,
+			height=17,
+			fg_color="transparent"
+		)
+		espace_avant_progression.grid(
+			row=5,
+			column=0,
+			sticky="ew",
+			pady=(0, 6)
+		)
+		espace_avant_progression.grid_propagate(False)
+		ligne_barre_progression = ctk.CTkFrame(
+			contenu,
+			fg_color="transparent"
+		)
+		ligne_barre_progression.grid(row=6, column=0, sticky="ew")
+		ligne_barre_progression.grid_columnconfigure(0, weight=1)
+		self.barre_progression = ctk.CTkProgressBar(
+			ligne_barre_progression,
 			height=8,
 			corner_radius=4,
 			progress_color="#4f9e63",
 			fg_color=("#dedede", "#1d1d1d")
 		)
-		self.barre_progression.grid(row=6, column=0, sticky="ew")
+		self.barre_progression.grid(row=0, column=0, sticky="ew")
 		self.barre_progression.set(0)
+		self.etiquette_pourcentage = ctk.CTkLabel(
+			ligne_barre_progression,
+			textvariable=self.pourcentage_progression,
+			text_color=secondaire,
+			font=("Segoe UI", 11)
+		)
+		self.etiquette_pourcentage.grid(row=0, column=1, sticky="e", padx=(12, 0))
 		ligne_infos_progression = ctk.CTkFrame(
 			contenu,
 			fg_color="transparent"
@@ -463,20 +480,46 @@ class YtDlpToolApp:
 			sticky="ew",
 			pady=(6, 0)
 		)
-		ligne_infos_progression.grid_columnconfigure(0, weight=1)
+		ligne_infos_progression.grid_columnconfigure(0, weight=0)
+		ligne_infos_progression.grid_columnconfigure(1, weight=1)
+		for ligne, titre in enumerate(("Statut", "Fichier", "Taille", "Vitesse")):
+			ctk.CTkLabel(
+				ligne_infos_progression,
+				text=titre,
+				text_color=secondaire,
+				font=("Segoe UI", 11)
+			).grid(row=ligne, column=0, sticky="w", padx=(0, 16), pady=1)
 		self.infos_progression = ctk.CTkLabel(
 			ligne_infos_progression,
-			textvariable=self.details_progression,
-			text_color=secondaire,
+			textvariable=self.statut,
+			text_color=texte,
 			font=("Segoe UI", 11)
 		)
-		self.infos_progression.grid(row=0, column=0, sticky="w")
+		self.infos_progression.grid(row=0, column=1, sticky="w", pady=1)
 		ctk.CTkLabel(
 			ligne_infos_progression,
-			textvariable=self.pourcentage_progression,
+			textvariable=self.compteur_progression,
 			text_color=secondaire,
 			font=("Segoe UI", 11)
-		).grid(row=0, column=1, sticky="e")
+		).grid(row=0, column=2, sticky="e", padx=(12, 0), pady=1)
+		ctk.CTkLabel(
+			ligne_infos_progression,
+			textvariable=self.details_progression,
+			text_color=texte,
+			font=("Segoe UI", 11)
+		).grid(row=1, column=1, columnspan=2, sticky="w", pady=1)
+		ctk.CTkLabel(
+			ligne_infos_progression,
+			textvariable=self.taille_progression,
+			text_color=texte,
+			font=("Segoe UI", 11)
+		).grid(row=2, column=1, columnspan=2, sticky="w", pady=1)
+		ctk.CTkLabel(
+			ligne_infos_progression,
+			textvariable=self.vitesse_progression,
+			text_color=texte,
+			font=("Segoe UI", 11)
+		).grid(row=3, column=1, columnspan=2, sticky="w", pady=1)
 
 		self.actualiser_qualite()
 		self.changer_playlist("Un élément")
@@ -581,9 +624,42 @@ class YtDlpToolApp:
 			command=self.choisir_dossier
 		).grid(row=0, column=1)
 
+		ligne_qualite = ctk.CTkFrame(contenu, fg_color="transparent")
+		ligne_qualite.grid(
+			row=3,
+			column=0,
+			sticky="w",
+			pady=(0, self.espacement_section)
+		)
+		ctk.CTkLabel(
+			ligne_qualite,
+			text="Qualité par défaut",
+			text_color=couleur_texte,
+			font=("Segoe UI", 13, "bold")
+		).grid(row=0, column=0, sticky="w", padx=(0, 12))
+		self.choix_qualite_defaut = ctk.CTkComboBox(
+			ligne_qualite,
+			values=["480p", "720p", "1080p", "2K", "4K"],
+			variable=self.qualite_defaut,
+			width=110,
+			height=38,
+			corner_radius=8,
+			border_color=couleur_bordure,
+			fg_color=("#ffffff", "#2d2d2d"),
+			state="readonly",
+			button_color=("#e5e5e5", "#414141"),
+			button_hover_color=("#d6d6d6", "#4b4b4b"),
+			dropdown_fg_color=("#ffffff", "#343434"),
+			dropdown_hover_color=("#e8e8e8", "#414141"),
+			dropdown_text_color=couleur_texte,
+			text_color=couleur_texte,
+			command=self.changer_qualite_defaut
+		)
+		self.choix_qualite_defaut.grid(row=0, column=1, sticky="w")
+
 		ligne_theme = ctk.CTkFrame(contenu, fg_color="transparent")
 		ligne_theme.grid(
-			row=3,
+			row=4,
 			column=0,
 			sticky="w",
 			pady=(0, self.espacement_section)
@@ -599,7 +675,7 @@ class YtDlpToolApp:
 			ligne_theme,
 			values=["Clair", "Sombre"],
 			variable=self.theme_choisi,
-			width=150,
+			width=110,
 			height=38,
 			corner_radius=8,
 			border_color=couleur_bordure,
@@ -615,7 +691,7 @@ class YtDlpToolApp:
 		self.choix_theme.grid(row=0, column=1, sticky="w")
 
 		ligne_mise_a_jour = ctk.CTkFrame(contenu, fg_color="transparent")
-		ligne_mise_a_jour.grid(row=4, column=0, sticky="w")
+		ligne_mise_a_jour.grid(row=5, column=0, sticky="w")
 		self.bouton_mise_a_jour = ctk.CTkButton(
 			ligne_mise_a_jour,
 			text="Mise à jour de yt-dlp",
@@ -623,9 +699,9 @@ class YtDlpToolApp:
 			height=32,
 			fg_color="transparent",
 			hover_color=fond_bouton,
-			text_color=couleur_texte,
+			text_color=self.couleur_accent_onglet,
 			anchor="w",
-			font=("Segoe UI", 13, "bold"),
+			font=("Segoe UI", 13, "underline"),
 			command=self.lancer_mise_a_jour
 		)
 		self.bouton_mise_a_jour.grid(row=0, column=0, sticky="w")
@@ -640,7 +716,7 @@ class YtDlpToolApp:
 			justify="left"
 		)
 		self.etat_mise_a_jour.grid(
-			row=5,
+			row=6,
 			column=0,
 			sticky="w",
 			pady=(8, 0)
@@ -677,8 +753,13 @@ class YtDlpToolApp:
 		self.bouton_effacer_historique = ctk.CTkButton(
 			entete,
 			text="Effacer tout",
-			width=100,
+			width=0,
 			height=34,
+			fg_color="transparent",
+			hover_color=("#eeeeee", "#3a3a3a"),
+			text_color=self.couleur_accent_onglet,
+			font=("Segoe UI", 12, "underline"),
+			anchor="e",
 			command=self.effacer_historique
 		)
 		self.bouton_effacer_historique.grid(row=0, column=2, sticky="e")
@@ -711,32 +792,48 @@ class YtDlpToolApp:
 			return
 		self.etat_historique.configure(text="")
 		for identifiant, chemin, type_fichier, taille, date in telechargements:
-			ligne = ctk.CTkFrame(self.liste_historique)
-			ligne.pack(fill="x", pady=5)
+			ligne = ctk.CTkFrame(
+				self.liste_historique,
+				fg_color="transparent"
+			)
+			ligne.pack(fill="x", pady=(0, 8))
 			ligne.grid_columnconfigure(0, weight=1)
 			ctk.CTkLabel(
 				ligne,
 				text=os.path.basename(chemin),
 				anchor="w",
 				font=("Segoe UI", 13, "bold")
-			).grid(row=0, column=0, columnspan=3, sticky="ew", padx=12, pady=(9, 2))
+			).grid(row=0, column=0, sticky="ew", padx=(8, 12), pady=(6, 0))
 			ctk.CTkLabel(
 				ligne,
 				text=f"{type_fichier} · {self.formater_taille(taille)} · {date}",
 				anchor="w"
-			).grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 9))
+			).grid(row=1, column=0, sticky="ew", padx=(8, 12), pady=(0, 6))
 			ctk.CTkButton(
 				ligne,
 				text="Dossier",
 				width=78,
+				height=30,
+				fg_color="transparent",
+				hover_color=("#eeeeee", "#3a3a3a"),
+				text_color=self.couleur_accent_onglet,
 				command=lambda p=chemin: self.ouvrir_dossier_fichier(p)
-			).grid(row=1, column=1, padx=4, pady=(0, 9))
+			).grid(row=0, column=1, rowspan=2, padx=4)
 			ctk.CTkButton(
 				ligne,
 				text="Effacer",
 				width=78,
+				height=30,
+				fg_color="transparent",
+				hover_color=("#eeeeee", "#3a3a3a"),
+				text_color=self.couleur_accent_onglet,
 				command=lambda i=identifiant: self.effacer_telechargement(i)
-			).grid(row=1, column=2, padx=(4, 12), pady=(0, 9))
+			).grid(row=0, column=2, rowspan=2, padx=(4, 8))
+			ctk.CTkFrame(
+				ligne,
+				height=1,
+				fg_color=("#d8d8d8", "#414141")
+			).grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
 	@staticmethod
 	def formater_taille(taille):
@@ -791,6 +888,17 @@ class YtDlpToolApp:
 			)
 		except OSError as erreur:
 			self.statut.set(f"Thème non enregistré : {erreur}")
+
+	def changer_qualite_defaut(self, qualite):
+		try:
+			enregistrer_qualite_defaut(qualite)
+		except OSError as erreur:
+			self.statut.set(f"Qualité non enregistrée : {erreur}")
+			return
+
+		self.qualite_defaut.set(qualite)
+		self.qualite.set(qualite)
+		self.actualiser_qualite()
 
 	def choisir_dossier(self):
 		dossier = filedialog.askdirectory(
@@ -872,7 +980,7 @@ class YtDlpToolApp:
 
 	def actualiser_playlist(self):
 		if self.playlist.get() == "custom":
-			self.ligne_options.grid_columnconfigure(2, weight=0)
+			self.ligne_options.grid_columnconfigure(2, weight=1)
 			self.zone_selection.grid()
 		else:
 			self.ligne_options.grid_columnconfigure(2, weight=0)
@@ -891,7 +999,7 @@ class YtDlpToolApp:
 	def reinitialiser_choix(self):
 		self.url.set("")
 		self.format_choisi.set("video")
-		self.qualite.set("720p")
+		self.qualite.set(self.qualite_defaut.get())
 		self.actualiser_qualite()
 		self.option_playlist.set("Un élément")
 		self.changer_playlist("Un élément")
@@ -945,6 +1053,11 @@ class YtDlpToolApp:
 		self.arret_demande = False
 		self.erreur_telechargement = ""
 		self.erreur_historique = ""
+		self.compteur_progression.set("")
+		self.details_progression.set("—")
+		self.taille_progression.set("")
+		self.vitesse_progression.set("")
+		self.pourcentage_progression.set("")
 		self.bouton_telecharger.configure(state="disabled")
 		self.statut.set("Téléchargement en cours...")
 		progress_hook = lambda progression: self.verifier_annulation(
@@ -1004,9 +1117,10 @@ class YtDlpToolApp:
 		)
 
 	def verifier_annulation(self, progression, positions_playlist, element_unique):
-		if self.arret_demande:
+		statut = progression.get("status")
+		if self.arret_demande and statut == "downloading":
 			raise DownloadCancelled("Téléchargement annulé depuis l’interface")
-		if progression.get("status") != "downloading":
+		if statut not in ("downloading", "finished"):
 			return
 		info = progression.get("info_dict", {})
 		index = info.get("playlist_index")
@@ -1038,17 +1152,28 @@ class YtDlpToolApp:
 		)
 		self.barre_progression.set(min(pourcentage, 100) / 100)
 		self.pourcentage_progression.set(f"{pourcentage:.0f} %")
+		info = progression.get("info_dict", {})
+		fichier = (
+			progression.get("filename")
+			or info.get("_filename")
+			or info.get("title")
+		)
+		if fichier:
+			self.details_progression.set(os.path.basename(fichier))
 		indicateurs = []
 		if taille_totale:
-			indicateurs.append(
-				f"Taille : {self.formater_taille(taille)} / {self.formater_taille(taille_totale)}"
+			self.taille_progression.set(
+				f"{self.formater_taille(taille)} / {self.formater_taille(taille_totale)}"
 			)
+		elif taille:
+			self.taille_progression.set(self.formater_taille(taille))
 		if progression.get("speed"):
-			indicateurs.append(f"Vitesse : {self.formater_taille(progression['speed'])}/s")
+			indicateurs.append(f"{self.formater_taille(progression['speed'])}/s")
 		if progression.get("eta") is not None:
 			indicateurs.append(f"Temps restant : {self.formater_temps(progression['eta'])}")
-		compteur = f"{position}/{total}    " if position and total else ""
-		self.details_progression.set(compteur + "    ".join(indicateurs))
+		compteur = f"Élément {position}/{total}" if position and total else ""
+		self.compteur_progression.set(compteur)
+		self.vitesse_progression.set("    ".join(indicateurs))
 
 	@staticmethod
 	def formater_temps(secondes):
@@ -1087,8 +1212,7 @@ class YtDlpToolApp:
 
 		if message.startswith("Téléchargement terminé") or message == "Téléchargement arrêté.":
 			self.reinitialiser_choix()
-			self.pourcentage_progression.set("")
-			self.details_progression.set("En attente d'un téléchargement")
+			self.vitesse_progression.set("")
 
 		self.bouton_telecharger.configure(state="normal")
 

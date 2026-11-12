@@ -114,6 +114,24 @@ def enregistrer_theme(theme):
 	parametres["theme"] = theme
 	enregistrer_parametres(parametres)
 
+
+QUALITES_VIDEO = ("480p", "720p", "1080p", "2K", "4K")
+
+
+def charger_qualite_defaut():
+	qualite = charger_parametres().get("qualite_defaut", "720p")
+	return qualite if qualite in QUALITES_VIDEO else "720p"
+
+
+def enregistrer_qualite_defaut(qualite):
+	if qualite not in QUALITES_VIDEO:
+		raise ValueError("Qualité vidéo invalide.")
+
+	parametres = charger_parametres()
+	parametres["qualite_defaut"] = qualite
+	enregistrer_parametres(parametres)
+	return qualite
+
 def mettre_a_jour(attendre=True):
 	if attendre:
 		print("\n == MISE A JOUR DE YT-DLP ==\n")
